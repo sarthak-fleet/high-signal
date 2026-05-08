@@ -38,6 +38,7 @@ export default function HomePage() {
           { href: "/dashboard", title: "signal dashboard", sub: "premium workspace" },
           { href: "/discover", title: "community discover", sub: "source-linked digests" },
           { href: "/review", title: "review queue", sub: "human approval" },
+          { href: "/backtest-workbench", title: "backtest workbench", sub: "action quality" },
           { href: "/track-record", title: "track record", sub: "market signals" },
           { href: "/digest", title: "weekly digest", sub: "rss + email-ready" },
         ]}

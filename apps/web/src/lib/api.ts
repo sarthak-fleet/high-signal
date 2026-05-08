@@ -128,6 +128,54 @@ export interface TrackBucket {
   hitRate: number | null;
 }
 
+export interface BacktestWorkbenchExample {
+  id: string;
+  slug: string;
+  title: string | null;
+  signalType: string;
+  direction: Direction;
+  confidence: Confidence;
+  predictedWindowDays: number;
+  publishedAt: number;
+  evidenceCount: number;
+  outcome: Outcome;
+  forwardReturn: number | null;
+  windowDays: number;
+  isBackfill: number;
+  actionScore: number | null;
+  actionBand: "compound" | "usable" | "watch" | "retire" | "pending";
+}
+
+export interface BacktestWorkbenchBucket {
+  signalType: string;
+  count: number;
+  matured: number;
+  pending: number;
+  hits: number;
+  misses: number;
+  pushes: number;
+  hitRate: number | null;
+  avgActionScore: number | null;
+  evidenceReadyRate: number;
+  recommendedAction: "promote" | "keep-testing" | "tighten-thesis" | "retire-or-rewrite";
+  examples: BacktestWorkbenchExample[];
+}
+
+export interface BacktestWorkbench {
+  cohort: "all" | "live" | "backfill";
+  summary: {
+    signals: number;
+    matured: number;
+    pending: number;
+    avgActionScore: number | null;
+    evidenceReadyRate: number;
+    promoteTypes: number;
+    rewriteTypes: number;
+  };
+  buckets: BacktestWorkbenchBucket[];
+  examples: BacktestWorkbenchExample[];
+}
+
 export interface SignalFilters {
   type?: string;
   direction?: Direction;
@@ -173,6 +221,8 @@ export const api = {
     fetchJson<{ live: TrackBucket[]; backfill: TrackBucket[]; all: TrackBucket[] }>(
       "/track-record/cohorts",
     ),
+  backtestWorkbench: (cohort: "all" | "live" | "backfill" = "live") =>
+    fetchJson<BacktestWorkbench>(`/track-record/workbench?cohort=${cohort}`),
   sectors: (days = 60) =>
     fetchJson<{
       days: number;
