@@ -161,6 +161,12 @@ export default async function DashboardPage() {
         empty="No pending surfaces."
         items={[
           {
+            href: "/watchlist",
+            kicker: "operator queue / action digest",
+            title: "Prioritize unified watchlist items",
+            body: "Mention checks, community digests, and market signals roll up into one action surface.",
+          },
+          {
             href: "/mentions",
             kicker: "mentionpilot / prompt checks",
             title: "Productionize brand configs, prompts, checks, and reports",
