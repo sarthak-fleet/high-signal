@@ -76,6 +76,7 @@ pnpm signals:sync:local
 - Stack + conventions: `agents.md`
 - Seed corpus: `python/ingest/src/high_signal_ingest/seed/`
 - Example signal: `signals/2026-04-25/example-nvda-h100-lead-time.md`
+- Ingest runbook: `docs/ingest-runbook.md`
 
 ## Deploy
 - Web → Vercel (`apps/web`)
