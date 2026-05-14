@@ -1,5 +1,4 @@
 import { api, type Direction, type Confidence, type SignalRow } from "@/lib/api";
-import { requireSignedIn } from "@/lib/require-auth";
 import { SignalCard } from "@/components/molecules/SignalCard";
 import { FilterBar, type Facets } from "@/components/molecules/FilterBar";
 
@@ -13,12 +12,12 @@ interface SP {
   entity?: string;
 }
 
+// Public per agents.md: signals are a "public web page" output channel.
 export default async function SignalsPage({
   searchParams,
 }: {
   searchParams: Promise<SP>;
 }) {
-  await requireSignedIn();
   const sp = await searchParams;
   let signals: SignalRow[] = [];
   let facets: Facets = { types: [], directions: [], confidences: [], topEntities: [] };
