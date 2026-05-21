@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { ConfidenceBadge } from "@/components/atoms/ConfidenceBadge";
 import { DirectionPill } from "@/components/atoms/DirectionPill";
 import { api } from "@/lib/api";
-import { signalHeadline } from "@/lib/rss";
+import { isBackfillSignal, signalHeadline, signalSummary } from "@/lib/signal-format";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +22,7 @@ export default async function FeaturedPage() {
   let candidates: Awaited<ReturnType<typeof api.signals>>["signals"] = [];
   try {
     const r = await api.signals();
-    candidates = r.signals;
+    candidates = r.signals.filter((signal) => !isBackfillSignal(signal));
   } catch {
     /* offline */
   }
@@ -58,8 +58,9 @@ export default async function FeaturedPage() {
     notFound();
   }
   const { signal, evidence } = detail;
+  if (isBackfillSignal(signal)) notFound();
   const headline = signalHeadline(signal.bodyMd, signal.slug);
-  const body = (signal.bodyMd ?? "").split("\n").slice(1).join("\n").trim();
+  const body = signalSummary(signal.bodyMd, signal.slug, 720);
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-16 text-zinc-300">
@@ -103,9 +104,6 @@ export default async function FeaturedPage() {
         <div className="mt-6 flex flex-wrap gap-4 text-sm">
           <Link href={`/signals/${signal.slug}`} className="text-[var(--color-accent)] hover:underline">
             permalink →
-          </Link>
-          <Link href="/track-record" className="text-zinc-400 hover:underline">
-            see hit-rate ledger
           </Link>
           <Link href="/signals/rss" className="text-zinc-400 hover:underline">
             subscribe (RSS)

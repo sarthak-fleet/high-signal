@@ -1,3 +1,6 @@
+import { notFound, redirect } from "next/navigation";
+import type { Route } from "next";
+import { requireAdmin } from "@/lib/clerk-admin";
 import { api, type TrackBucket } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
@@ -9,9 +12,34 @@ interface Cohorts {
   all: TrackBucket[];
 }
 
-// Public per agents.md: "Public hit-rate ledger from day 1 — moat that
-// competitors can't copy without rebuilding."
+function summarizeBuckets(buckets: TrackBucket[]) {
+  return buckets.reduce(
+    (acc, bucket) => {
+      acc.hit += bucket.hit;
+      acc.miss += bucket.miss;
+      acc.push += bucket.push;
+      acc.total += bucket.total;
+      return acc;
+    },
+    { hit: 0, miss: 0, push: 0, total: 0 },
+  );
+}
+
+function hitRateFrom(summary: ReturnType<typeof summarizeBuckets>) {
+  return summary.hit + summary.miss > 0 ? summary.hit / (summary.hit + summary.miss) : null;
+}
+
+function formatHitRate(value: number | null) {
+  return value != null ? `${(value * 100).toFixed(0)}%` : "—";
+}
+
 export default async function TrackRecordPage() {
+  const admin = await requireAdmin();
+  if (!admin.ok) {
+    if (admin.status === 401) redirect("/sign-in" as Route);
+    notFound();
+  }
+
   let cohorts: Cohorts = { live: [], backfill: [], all: [] };
   try {
     cohorts = await api.trackRecordCohorts();
@@ -28,34 +56,69 @@ export default async function TrackRecordPage() {
         ← high signal
       </a>
       <header className="mt-3 border-b border-zinc-800 pb-6">
-        <h1 className="text-3xl font-medium tracking-tight">Track record</h1>
+        <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--color-accent)]">
+          private / {admin.identity.email}
+        </div>
+        <h1 className="mt-3 text-3xl font-medium tracking-tight">Track record</h1>
         <p className="mt-2 max-w-2xl text-sm text-zinc-400">
-          Every published signal is auto-scored against forward returns. No retroactive edits.
+          This is the internal quality ledger for market signals. Read Live first; use Backfill only
+          to calibrate the scoring system.
           <br />
           <span className="text-zinc-500">
-            Live = forward predictions made on the day. Backfill = historical replay (calibration
-            only — known data-leak risk; report separately).
+            Hit-rate excludes pushes. Push means the market move was too small or inconclusive.
           </span>
         </p>
       </header>
 
-      <section className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-2">
-        <CohortBlock title="Live" subtitle="forward predictions" tone="accent" buckets={cohorts.live} />
+      <section className="mt-8 grid gap-px border border-zinc-800 bg-zinc-800 md:grid-cols-3">
+        <GuideItem label="Use for trust" value="Live" body="Forward predictions made before the scoring window closed." />
+        <GuideItem label="Use for tuning" value="Backfill" body="Historical replay. Useful, but not proof of product quality." />
+        <GuideItem label="Do not overread" value="Combined" body="Mixed view for debugging only; it should not be marketed yet." />
+      </section>
+
+      <section className="mt-10 grid grid-cols-1 gap-6 lg:grid-cols-[1.15fr_0.85fr]">
         <CohortBlock
-          title="Backfill"
-          subtitle="historical replay · calibration only"
+          title="Live predictions"
+          subtitle="real forward calls"
+          tone="accent"
+          buckets={cohorts.live}
+          note="This is the only section that should count for public trust later."
+        />
+        <CohortBlock
+          title="Backfill calibration"
+          subtitle="historical replay"
           tone="muted"
           buckets={cohorts.backfill}
+          note="Use this to spot weak signal types and scoring bias, not to claim accuracy."
         />
       </section>
 
       <section className="mt-12">
-        <h2 className="font-mono text-[10px] uppercase tracking-[0.2em] text-zinc-500">
-          combined (live + backfill)
-        </h2>
+        <div className="flex items-baseline justify-between border-b border-zinc-800 pb-3">
+          <h2 className="font-mono text-[10px] uppercase tracking-[0.2em] text-zinc-500">
+            raw combined ledger
+          </h2>
+          <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-600">
+            debugging view
+          </span>
+        </div>
+        <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-500">
+          This table mixes live and replayed rows. It is useful for finding broken signal types, but
+          it should not be shown as the product's public accuracy until the live cohort is larger.
+        </p>
         <BucketTable buckets={cohorts.all} emptyHint="no scored signals yet" />
       </section>
     </main>
+  );
+}
+
+function GuideItem({ label, value, body }: { label: string; value: string; body: string }) {
+  return (
+    <div className="bg-zinc-950/50 p-4">
+      <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500">{label}</div>
+      <div className="mt-3 text-lg font-medium text-zinc-100">{value}</div>
+      <p className="mt-2 text-sm leading-6 text-zinc-500">{body}</p>
+    </div>
   );
 }
 
@@ -64,28 +127,17 @@ function CohortBlock({
   subtitle,
   tone,
   buckets,
+  note,
 }: {
   title: string;
   subtitle: string;
   tone: "accent" | "muted";
   buckets: TrackBucket[];
+  note: string;
 }) {
-  const overall = buckets.reduce(
-    (acc, b) => {
-      acc.hit += b.hit;
-      acc.miss += b.miss;
-      acc.push += b.push;
-      acc.total += b.total;
-      return acc;
-    },
-    { hit: 0, miss: 0, push: 0, total: 0 },
-  );
-  const overallHitRate =
-    overall.hit + overall.miss > 0 ? overall.hit / (overall.hit + overall.miss) : null;
-  const titleClass =
-    tone === "accent"
-      ? "text-[var(--color-accent)]"
-      : "text-zinc-400";
+  const overall = summarizeBuckets(buckets);
+  const overallHitRate = hitRateFrom(overall);
+  const titleClass = tone === "accent" ? "text-[var(--color-accent)]" : "text-zinc-400";
 
   return (
     <div className="border border-zinc-800 bg-zinc-950/40 p-5">
@@ -100,18 +152,19 @@ function CohortBlock({
       <div className="nums mt-4 flex items-baseline gap-4">
         <div>
           <div className="text-3xl font-medium">
-            {overallHitRate != null ? `${(overallHitRate * 100).toFixed(0)}%` : "—"}
+            {formatHitRate(overallHitRate)}
           </div>
           <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500">
             hit-rate
           </div>
         </div>
-        <div className="flex-1 grid grid-cols-3 gap-3 text-sm">
+        <div className="grid flex-1 grid-cols-3 gap-3 text-sm">
           <Stat label="hit" value={overall.hit} tone="up" />
           <Stat label="miss" value={overall.miss} tone="down" />
           <Stat label="push" value={overall.push} tone="muted" />
         </div>
       </div>
+      <p className="mt-4 border-t border-zinc-900 pt-3 text-sm leading-6 text-zinc-500">{note}</p>
       <div className="mt-4">
         <BucketTable buckets={buckets} emptyHint={`no ${title.toLowerCase()} scored signals`} compact />
       </div>
@@ -149,7 +202,9 @@ function BucketTable({
 }) {
   if (buckets.length === 0) {
     return (
-      <div className={`border border-dashed border-zinc-800 ${compact ? "p-4" : "p-10"} text-center font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500`}>
+      <div
+        className={`border border-dashed border-zinc-800 ${compact ? "p-4" : "p-10"} text-center font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500`}
+      >
         {emptyHint}
       </div>
     );
@@ -178,7 +233,7 @@ function BucketTable({
               <td className="border-b border-zinc-900 py-1.5 text-right text-rose-400">{b.miss}</td>
               <td className="border-b border-zinc-900 py-1.5 text-right text-zinc-500">{b.push}</td>
               <td className="border-b border-zinc-900 py-1.5 text-right">
-                {b.hitRate != null ? `${(b.hitRate * 100).toFixed(0)}%` : "—"}
+                {formatHitRate(b.hitRate)}
               </td>
             </tr>
           ))}

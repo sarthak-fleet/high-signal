@@ -13,6 +13,8 @@ function requestFromHeaders(headerList: Headers) {
 }
 
 export async function getRequestAuth(request?: Request) {
+  if (!publishableKey || !secretKey) return null;
+
   const clerk = createClerkClient({ publishableKey, secretKey });
   const authRequest = request ?? requestFromHeaders(await headers());
   const state = await clerk.authenticateRequest(authRequest, { publishableKey, secretKey });

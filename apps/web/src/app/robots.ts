@@ -7,8 +7,8 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: "*",
-        allow: ["/", "/signals", "/digest", "/track-record"],
-        disallow: ["/dashboard", "/watchlist", "/review", "/api/", "/discover", "/sectors", "/markets", "/entities", "/mentions", "/communities", "/backtest-workbench"],
+        allow: ["/", "/signals", "/signals/today", "/digest"],
+        disallow: ["/review", "/api/", "/track-record", "/backtest-workbench"],
       },
     ],
     sitemap: `${siteUrl}/sitemap.xml`,

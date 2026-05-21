@@ -11,6 +11,7 @@ import {
 import { analyzeMentionVisibility } from "@high-signal/shared";
 import { requireSignedIn } from "@/lib/require-auth";
 
+export const dynamic = "force-dynamic";
 export const metadata = { title: "Mention Intelligence — High Signal" };
 
 const sampleText =

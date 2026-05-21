@@ -50,7 +50,7 @@ export default async function CommunityArchivePage({
 
   return (
     <PageShell>
-      <BackLink href="/discover">back to discover</BackLink>
+      <BackLink href="/communities">back to communities</BackLink>
       <SectionHeader eyebrow="community archive" title={`r/${subreddit}`}>
         Archived source-linked digests for the {period} view.
       </SectionHeader>

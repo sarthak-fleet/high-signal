@@ -57,12 +57,6 @@ export default function AboutPage() {
             — last 7 days of signals, designed to be email-shaped.
           </li>
           <li>
-            <Link className="text-[var(--color-accent)] hover:underline" href="/track-record">
-              /track-record
-            </Link>{" "}
-            — public hit-rate ledger, live + backfill cohorts.
-          </li>
-          <li>
             RSS:{" "}
             <Link className="text-[var(--color-accent)] hover:underline" href="/signals/rss">
               /signals/rss

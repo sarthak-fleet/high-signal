@@ -17,6 +17,7 @@ import {
 } from "@high-signal/shared";
 import { requireSignedIn } from "@/lib/require-auth";
 
+export const dynamic = "force-dynamic";
 export const metadata = { title: "Community Intelligence — High Signal" };
 
 const sampleSummary = normalizeCommunitySummary({

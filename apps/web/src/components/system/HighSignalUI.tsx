@@ -101,7 +101,7 @@ export function SectionHeader({
 
 export function ProductAreaGrid({ items }: { items: ProductArea[] }) {
   return (
-    <section className="mt-10 grid gap-px border border-[var(--color-line)] bg-[var(--color-line)] md:grid-cols-3">
+    <section className="mt-10 grid gap-px border border-[var(--color-line)] bg-[var(--color-line)] md:grid-cols-2 lg:grid-cols-4">
       {items.map((item) => (
         <a
           key={item.href}

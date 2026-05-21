@@ -25,8 +25,8 @@ export default function PrivacyPage() {
       </h2>
       <p className="mt-2 text-sm leading-7">
         <Link className="underline" href="/signals">/signals</Link>,{" "}
-        <Link className="underline" href="/digest">/digest</Link>,{" "}
-        <Link className="underline" href="/track-record">/track-record</Link>,
+        <Link className="underline" href="/signals/today">/signals/today</Link>,{" "}
+        <Link className="underline" href="/digest">/digest</Link>,
         and their RSS feeds are public and require no sign-in. We don&apos;t
         track which signals you read.
       </p>
