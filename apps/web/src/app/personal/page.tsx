@@ -8,6 +8,12 @@ import {
   StatGrid,
 } from "@/components/system/HighSignalUI";
 import { api, type SignalRow } from "@/lib/api";
+import {
+  buildDailyBroadInsights,
+  buildDailySourceCoverage,
+  DAILY_INTELLIGENCE_LAYER,
+  readSourceRefreshes as readBundledSourceRefreshes,
+} from "@/lib/daily-intelligence";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import marketWatch from "../../../../../data/personal-market-watch.json";
@@ -41,7 +47,7 @@ type ProductFlowRefreshRecord = {
   target?: string;
   subreddit?: string;
   period: "day" | "week" | "month";
-  prompt: string;
+  prompt?: string;
   digest: CommunityDigestSnapshot;
   createdAt: string;
 };
@@ -188,16 +194,7 @@ async function readTaskSync(): Promise<PersonalTaskSyncRecord[]> {
 }
 
 async function readSourceRefreshes(): Promise<ProductFlowRefreshRecord[]> {
-  try {
-    const raw = await readFile(resolve(DATA_ROOT, "product-flow-refresh.jsonl"), "utf8");
-    return raw
-      .split("\n")
-      .map((line) => line.trim())
-      .filter(Boolean)
-      .map((line) => JSON.parse(line) as ProductFlowRefreshRecord);
-  } catch {
-    return [];
-  }
+  return (await readBundledSourceRefreshes()) as ProductFlowRefreshRecord[];
 }
 
 async function readMarketRefreshes(): Promise<MarketRefreshRecord[]> {
@@ -264,6 +261,16 @@ function latestRefreshRecords(records: ProductFlowRefreshRecord[]) {
   return Array.from(latest.values()).sort((a, b) => b.digest.snapshotDate.localeCompare(a.digest.snapshotDate));
 }
 
+function countByValues(values: string[]) {
+  const counts = new Map<string, number>();
+  for (const value of values) counts.set(value, (counts.get(value) ?? 0) + 1);
+  return Array.from(counts.entries()).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+}
+
+function countLine(values: Array<[string, number]>) {
+  return values.map(([key, value]) => `${key.replaceAll("-", " ")} ${value}`).join(" / ") || "none";
+}
+
 function safeDate(value?: string) {
   return value && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : null;
 }
@@ -292,6 +299,12 @@ export default async function PersonalPage({
   const discover = discoverResult.status === "fulfilled" ? discoverResult.value.items : [];
   const refreshes = await readSourceRefreshes();
   const marketRefreshes = await readMarketRefreshes();
+  const sourceCoverage = buildDailySourceCoverage(refreshes);
+  const sourceReadDate = sourceCoverage.latestRefreshDate ?? new Date().toISOString().slice(0, 10);
+  const sourceReads = buildDailyBroadInsights(refreshes, sourceReadDate);
+  const sourceReadCategories = countByValues(sourceReads.map((item) => item.contentCategory));
+  const sourceReadIntents = countByValues(sourceReads.map((item) => item.intent));
+  const sourceReadSentiments = countByValues(sourceReads.map((item) => item.sentiment));
   const evidence = [
     ...evidenceFromMarketRefreshes(marketRefreshes),
     ...evidenceFromMarketWatchConfig(marketWatch as MarketWatchConfig),
@@ -345,6 +358,56 @@ export default async function PersonalPage({
           { label: "Task sync", value: pendingSync.toString(), sub: "accepted tasks pending" },
         ]}
       />
+
+      <div className="mt-10">
+        <Panel eyebrow="source intelligence" title="What the reads layer is watching">
+          <p className="mt-4 text-sm leading-6 text-[var(--color-muted)]">
+            Latest accepted source date: {sourceReadDate}. Labels use{" "}
+            {DAILY_INTELLIGENCE_LAYER.broadReadAnnotation.method}; no LLM is used for this daily
+            annotation pass.
+          </p>
+          <MetricGrid
+            items={[
+              { label: "configured", value: sourceCoverage.configuredSources.toString() },
+              { label: "accepted", value: sourceCoverage.acceptedSnapshots.toString() },
+              { label: "items", value: sourceCoverage.underlyingItems.toString() },
+              { label: "reads", value: sourceReads.length.toString() },
+            ]}
+          />
+          <div className="mt-6 grid gap-5 md:grid-cols-3">
+            {[
+              ["category", countLine(sourceReadCategories)],
+              ["intent", countLine(sourceReadIntents.slice(0, 5))],
+              ["sentiment", countLine(sourceReadSentiments)],
+            ].map(([label, value]) => (
+              <div key={label} className="border border-[var(--color-line)] p-4">
+                <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-muted)]">
+                  {label}
+                </div>
+                <div className="mt-3 break-words font-mono text-xs leading-6 text-[var(--color-fg)]">
+                  {value}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-6 divide-y divide-[var(--color-line)] border-y border-[var(--color-line)]">
+            {sourceReads.slice(0, 8).map((item) => (
+              <a key={item.id} className="block py-4 hover:text-[var(--color-accent)]" href={item.href}>
+                <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-muted)]">
+                  {item.sourceLabel} / {item.contentCategory.replaceAll("-", " ")} / intent{" "}
+                  {item.intent.replaceAll("-", " ")} / {item.sentiment}
+                </div>
+                <div className="mt-2 text-sm leading-6">{item.title}</div>
+              </a>
+            ))}
+            {!sourceReads.length ? (
+              <p className="py-4 text-sm text-[var(--color-muted)]">
+                No accepted source reads for the latest refresh date.
+              </p>
+            ) : null}
+          </div>
+        </Panel>
+      </div>
 
       <section className="mt-10 grid gap-px border border-[var(--color-line)] bg-[var(--color-line)] md:grid-cols-4">
         {[
