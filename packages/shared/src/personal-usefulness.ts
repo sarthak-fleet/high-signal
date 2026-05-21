@@ -696,17 +696,6 @@ export function snapshotFromPersonalBrief(brief: PersonalCommandBrief): Personal
   };
 }
 
-function emptyChangeSummary(previous: PersonalBriefSnapshot | null): PersonalBriefChangeSummary {
-  return {
-    previousGeneratedAt: previous?.generatedAt ?? null,
-    newRecommendations: [],
-    removedRecommendationIds: [],
-    actionChanged: [],
-    priorityChanged: [],
-    scoreMoved: [],
-  };
-}
-
 function changeSummaryFrom(input: {
   recommendations: PersonalProductRecommendation[];
   previousSnapshot?: PersonalBriefSnapshot | null;
@@ -714,7 +703,7 @@ function changeSummaryFrom(input: {
   const previous = input.previousSnapshot ?? null;
   if (!previous) {
     return {
-      ...emptyChangeSummary(null),
+      previousGeneratedAt: null,
       newRecommendations: input.recommendations.slice(0, 8).map((item) => ({
         id: item.id,
         action: item.action,
@@ -722,6 +711,10 @@ function changeSummaryFrom(input: {
         score: item.score,
         decisionStatus: item.decisionStatus,
       })),
+      removedRecommendationIds: [],
+      actionChanged: [],
+      priorityChanged: [],
+      scoreMoved: [],
     };
   }
   const previousById = new Map(previous.recommendations.map((item) => [item.id, item]));
