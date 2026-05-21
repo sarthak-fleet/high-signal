@@ -1,7 +1,15 @@
 import { api, type SignalRow } from "@/lib/api";
 import { isBackfillSignal } from "@/lib/signal-format";
 import { SignalCard } from "@/components/molecules/SignalCard";
-import { assessSignalQuality, type SignalContentCategory } from "@high-signal/shared";
+import { readFile } from "node:fs/promises";
+import { resolve } from "node:path";
+import {
+  assessSignalQuality,
+  communityDigestEvidenceQuality,
+  type CommunityDigestSnapshot,
+  type SignalContentCategory,
+} from "@high-signal/shared";
+import sourceRegistry from "../../../../../../data/personal-source-registry.json";
 
 export const dynamic = "force-dynamic";
 export const metadata = {
@@ -21,6 +29,28 @@ const CATEGORY_LABELS: Record<SignalContentCategory, string> = {
   "agent-evaluation": "agent evaluation",
   "policy-regulatory": "policy / regulatory",
   "company-event": "company events",
+};
+const DATA_ROOT = resolve(process.cwd(), "../../data");
+
+type SourceRegistry = {
+  sources: Array<{
+    id: string;
+    type: "reddit" | "hacker-news" | "github-issues" | "rss";
+    label: string;
+    target: string;
+    period: "day" | "week" | "month";
+    intent: string;
+  }>;
+};
+
+type ProductFlowRefreshRecord = {
+  source: "reddit" | "hacker-news" | "github-issues" | "rss";
+  sourceId?: string;
+  label?: string;
+  target?: string;
+  period: "day" | "week" | "month";
+  digest: CommunityDigestSnapshot;
+  createdAt: string;
 };
 
 function utcDate(d = new Date()) {
@@ -58,6 +88,36 @@ function countBy(values: string[]) {
   return Array.from(counts.entries()).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
 }
 
+async function readSourceRefreshes(): Promise<ProductFlowRefreshRecord[]> {
+  try {
+    const raw = await readFile(resolve(DATA_ROOT, "product-flow-refresh.jsonl"), "utf8");
+    return raw
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => JSON.parse(line) as ProductFlowRefreshRecord);
+  } catch {
+    return [];
+  }
+}
+
+function latestRefreshRecords(records: ProductFlowRefreshRecord[]) {
+  const latest = new Map<string, ProductFlowRefreshRecord>();
+  for (const record of records) {
+    const key = `${record.sourceId ?? record.label ?? record.target ?? record.source}:${record.period}`.toLowerCase();
+    const previous = latest.get(key);
+    if (!previous || record.digest.snapshotDate > previous.digest.snapshotDate) latest.set(key, record);
+  }
+  return Array.from(latest.values());
+}
+
+function acceptedRefreshRecords(records: ProductFlowRefreshRecord[]) {
+  return latestRefreshRecords(records).filter((record) => {
+    const quality = communityDigestEvidenceQuality(record.digest);
+    return record.digest.sourceCount >= 2 && quality.genericRisk !== "high" && quality.repeatedSignalCount >= 2;
+  });
+}
+
 export default async function SignalsTodayPage({
   searchParams,
 }: {
@@ -87,6 +147,16 @@ export default async function SignalsTodayPage({
   const usable = quality.filter((item) => item.publishable).length;
   const strong = quality.filter((item) => item.band === "strong").length;
   const evidenceCount = today.reduce((sum, signal) => sum + signal.evidenceUrls.length, 0);
+  const registry = sourceRegistry as SourceRegistry;
+  const refreshes = await readSourceRefreshes();
+  const acceptedRefreshes = acceptedRefreshRecords(refreshes);
+  const configuredByType = countBy(registry.sources.map((source) => source.type));
+  const acceptedByType = countBy(acceptedRefreshes.map((record) => record.source));
+  const latestSnapshot = acceptedRefreshes
+    .map((record) => record.digest.snapshotDate)
+    .sort()
+    .at(-1);
+  const underlyingItems = acceptedRefreshes.reduce((sum, record) => sum + record.digest.sourceCount, 0);
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-16">
@@ -150,6 +220,41 @@ export default async function SignalsTodayPage({
             <div className="mt-3 break-words font-mono text-sm text-zinc-200">{value}</div>
           </div>
         ))}
+      </section>
+
+      <section className="mt-6 border-y border-zinc-800 py-5">
+        <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500">
+          source coverage
+        </div>
+        <div className="mt-4 grid gap-px border border-zinc-800 bg-zinc-800 sm:grid-cols-4">
+          {[
+            ["configured", registry.sources.length.toString()],
+            ["accepted", acceptedRefreshes.length.toString()],
+            ["underlying items", underlyingItems.toString()],
+            ["latest refresh", latestSnapshot?.slice(0, 10) ?? "none"],
+          ].map(([label, value]) => (
+            <div key={label} className="bg-black p-4">
+              <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500">
+                {label}
+              </div>
+              <div className="mt-3 break-words font-mono text-sm text-zinc-200">{value}</div>
+            </div>
+          ))}
+        </div>
+        <div className="mt-4 grid gap-4 text-xs leading-6 text-zinc-500 sm:grid-cols-2">
+          <div>
+            <div className="font-mono uppercase tracking-[0.18em] text-zinc-600">configured</div>
+            <div className="mt-1 font-mono">
+              {configuredByType.map(([type, count]) => `${type} ${count}`).join(" / ")}
+            </div>
+          </div>
+          <div>
+            <div className="font-mono uppercase tracking-[0.18em] text-zinc-600">accepted latest</div>
+            <div className="mt-1 font-mono">
+              {acceptedByType.map(([type, count]) => `${type} ${count}`).join(" / ") || "none"}
+            </div>
+          </div>
+        </div>
       </section>
 
       {categories.length > 0 ? (
