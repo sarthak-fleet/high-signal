@@ -29,6 +29,22 @@ function signalCategory(signal: SignalRow): SignalContentCategory {
   );
 }
 
+function countBy(values: string[]) {
+  const counts = new Map<string, number>();
+  for (const value of values) counts.set(value, (counts.get(value) ?? 0) + 1);
+  return Array.from(counts.entries())
+    .map(([k, n]) => ({ k, n }))
+    .sort((a, b) => b.n - a.n || a.k.localeCompare(b.k));
+}
+
+function signalTitle(signal: SignalRow) {
+  const line = signal.bodyMd
+    .split("\n")
+    .map((item) => item.trim())
+    .find(Boolean);
+  return (line ?? `${signal.primaryEntityId} ${signal.signalType}`).replace(/^#+\s*/, "");
+}
+
 /** JSON twin of /signals/today — one UTC date of signals, freshest first. */
 export async function GET(req: Request) {
   const url = new URL(req.url);
@@ -43,18 +59,56 @@ export async function GET(req: Request) {
   }
   const today = all.filter((s) => !category || signalCategory(s) === category);
   const refreshes = await readSourceRefreshes();
-  const broadInsights = buildDailyBroadInsights(refreshes, date).filter(
+  const allBroadInsights = buildDailyBroadInsights(refreshes, date);
+  const broadInsights = allBroadInsights.filter(
     (item) => !category || item.contentCategory === category,
   );
   const sourceCoverage = buildDailySourceCoverage(refreshes);
+  const categoryCounts = countBy([
+    ...all.map((signal) => signalCategory(signal)),
+    ...allBroadInsights.map((item) => item.contentCategory),
+  ]);
+  const intentCounts = countBy(broadInsights.map((item) => item.intent));
+  const sentimentCounts = countBy(broadInsights.map((item) => item.sentiment));
+  const items = [
+    ...today.map((signal) => ({
+      kind: "signal" as const,
+      id: signal.slug,
+      title: signalTitle(signal),
+      href: `/signals/${signal.slug}`,
+      contentCategory: signalCategory(signal),
+      confidence: signal.confidence,
+      observedAt: signal.publishedAt,
+      sourceCount: signal.evidenceUrls.length,
+    })),
+    ...broadInsights.map((item) => ({
+      kind: "broad-insight" as const,
+      id: item.id,
+      title: item.title,
+      href: item.href,
+      contentCategory: item.contentCategory,
+      confidence: item.confidence,
+      observedAt: item.observedAt,
+      sourceCount: item.sourceCount,
+      intent: item.intent,
+      sentiment: item.sentiment,
+      urgency: item.urgency,
+      qualityScore: item.qualityScore,
+    })),
+  ].sort((a, b) => String(b.observedAt).localeCompare(String(a.observedAt)));
   return new Response(
     JSON.stringify({
       generatedAt: new Date().toISOString(),
       date,
       category,
       count: today.length,
+      totalCount: today.length + broadInsights.length,
       broadInsightCount: broadInsights.length,
+      categoryCounts,
+      intentCounts,
+      sentimentCounts,
       sourceCoverage,
+      items,
       signals: today,
       broadInsights,
     }),

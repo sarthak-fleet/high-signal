@@ -77,6 +77,8 @@ export default async function SignalsTodayPage({
   } catch {
     /* offline */
   }
+  const refreshes = await readSourceRefreshes();
+  const allBroadInsights = buildDailyBroadInsights(refreshes, selectedDate);
 
   const today = all
     .filter((s) => !selectedCategory || signalCategory(s) === selectedCategory)
@@ -85,17 +87,30 @@ export default async function SignalsTodayPage({
       if (c !== 0) return c;
       return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
     });
-  const categories = countBy(all.map((signal) => signalCategory(signal)));
-  const quality = today.map(signalQuality);
-  const sourceClasses = countBy(quality.flatMap((item) => item.sourceClasses));
-  const usable = quality.filter((item) => item.publishable).length;
-  const strong = quality.filter((item) => item.band === "strong").length;
-  const evidenceCount = today.reduce((sum, signal) => sum + signal.evidenceUrls.length, 0);
-  const refreshes = await readSourceRefreshes();
-  const coverage = buildDailySourceCoverage(refreshes);
-  const broadInsights = buildDailyBroadInsights(refreshes, selectedDate).filter(
+  const broadInsights = allBroadInsights.filter(
     (item) => !selectedCategory || item.contentCategory === selectedCategory,
   );
+  const totalItems = today.length + broadInsights.length;
+  const allItemsCount = all.length + allBroadInsights.length;
+  const categories = countBy([
+    ...all.map((signal) => signalCategory(signal)),
+    ...allBroadInsights.map((item) => item.contentCategory),
+  ]);
+  const quality = today.map(signalQuality);
+  const sourceClasses = countBy([
+    ...quality.flatMap((item) => item.sourceClasses),
+    ...broadInsights.map((item) => item.sourceType),
+  ]);
+  const usable =
+    quality.filter((item) => item.publishable).length +
+    broadInsights.filter((item) => item.qualityScore >= 45).length;
+  const strong =
+    quality.filter((item) => item.band === "strong").length +
+    broadInsights.filter((item) => item.qualityScore >= 70).length;
+  const evidenceCount =
+    today.reduce((sum, signal) => sum + signal.evidenceUrls.length, 0) +
+    broadInsights.reduce((sum, item) => sum + item.sourceCount, 0);
+  const coverage = buildDailySourceCoverage(refreshes);
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-16">
@@ -108,7 +123,8 @@ export default async function SignalsTodayPage({
       <header className="mt-3 border-b border-zinc-800 pb-6">
         <h1 className="text-3xl font-medium tracking-tight">Daily</h1>
         <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500">
-          {selectedDate} · {today.length} item{today.length === 1 ? "" : "s"}
+          {selectedDate} · {totalItems} item{totalItems === 1 ? "" : "s"} · signals{" "}
+          {today.length} · reads {broadInsights.length}
         </p>
       </header>
 
@@ -145,9 +161,9 @@ export default async function SignalsTodayPage({
         </button>
       </form>
 
-      <section className="mt-6 grid gap-px border border-zinc-800 bg-zinc-800 sm:grid-cols-4">
+      <section className="mt-6 grid gap-px border border-zinc-800 bg-zinc-800 sm:grid-cols-5">
         {[
-          ["usable", `${usable}/${today.length}`],
+          ["usable", `${usable}/${totalItems}`],
           ["strong", strong.toString()],
           ["evidence", evidenceCount.toString()],
           ["sources", sourceClasses.map(([k, n]) => `${k} ${n}`).join(" / ") || "none"],
@@ -202,7 +218,7 @@ export default async function SignalsTodayPage({
             className={`border px-2.5 py-1 ${!selectedCategory ? "border-[var(--color-accent)] text-[var(--color-accent)]" : "border-zinc-800 text-zinc-500 hover:text-zinc-200"}`}
             href={`/signals/today?date=${selectedDate}`}
           >
-            all {all.length}
+            all {allItemsCount}
           </a>
           {categories.map(([category, count]) => (
             <a
@@ -257,7 +273,7 @@ export default async function SignalsTodayPage({
         </section>
       ) : null}
 
-      {today.length === 0 ? (
+      {totalItems === 0 ? (
         <p className="mt-10 text-sm text-zinc-500">
           Nothing for this date/filter. Check the weekly{" "}
           <a href="/digest" className="text-[var(--color-accent)] hover:underline">
@@ -265,13 +281,13 @@ export default async function SignalsTodayPage({
           </a>{" "}
           instead.
         </p>
-      ) : (
+      ) : today.length > 0 ? (
         <ul className="mt-8 space-y-3">
           {today.map((s) => (
             <SignalCard key={s.slug} s={s} />
           ))}
         </ul>
-      )}
+      ) : null}
     </main>
   );
 }
