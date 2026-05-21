@@ -93,6 +93,7 @@ const REPORT_INDEX_PATH = resolve(ROOT, "data/personal-report-index.json");
 const REPORTS_DIR = resolve(ROOT, "reports/personal");
 const SAAS_MAKER_TASK_CACHE = "/Users/sarthak/Desktop/fleet/saas-maker/.symphony/tasks.json";
 const execFileAsync = promisify(execFile);
+const PRODUCT_TIME_ZONE = process.env.HIGH_SIGNAL_TIME_ZONE ?? "Asia/Kolkata";
 
 const fallbackFlows: IdeaFlowEvidence[] = [
   {
@@ -139,6 +140,21 @@ const fallbackFlows: IdeaFlowEvidence[] = [
 
 async function readJson<T>(path: string): Promise<T> {
   return JSON.parse(await readFile(path, "utf8")) as T;
+}
+
+function productDateString(date = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: PRODUCT_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const byType = new Map(parts.map((part) => [part.type, part.value]));
+  return `${byType.get("year")}-${byType.get("month")}-${byType.get("day")}`;
+}
+
+function productSnapshotTimestamp(date = new Date()) {
+  return `${productDateString(date)}T${date.toISOString().slice(11)}`;
 }
 
 async function readFeedback(): Promise<PersonalRecommendationFeedback[]> {
@@ -861,7 +877,7 @@ function summarizeRefresh(input: {
     THEME_TERMS.map((item) => ({ item, score: themeScore(joined, item.words) })).sort((a, b) => b.score - a.score)[0]
       ?.item ?? THEME_TERMS[0].item;
   const top = input.posts[0];
-  const snapshotDate = new Date().toISOString();
+  const snapshotDate = productSnapshotTimestamp();
   const notable = input.posts.slice(0, 3).map((post) => ({
     title: post.title,
     desc: post.selftext.slice(0, 260) || `${post.score} points in r/${input.subreddit}.`,
@@ -904,7 +920,7 @@ function summarizeSourceRefresh(input: {
     THEME_TERMS.map((item) => ({ item, score: themeScore(joined, item.words) })).sort((a, b) => b.score - a.score)[0]
       ?.item ?? THEME_TERMS[0].item;
   const top = input.posts[0];
-  const snapshotDate = new Date().toISOString();
+  const snapshotDate = productSnapshotTimestamp();
   const notable = input.posts.slice(0, 4).map((post) => ({
     title: post.title,
     desc: post.body.slice(0, 260) || `${post.score} activity score from ${post.sourceLabel}.`,
@@ -1637,12 +1653,13 @@ function renderReport(input: {
   refreshes: ProductFlowRefreshRecord[];
 }) {
   const { brief } = input;
+  const reportDate = productDateString(new Date(brief.generatedAt));
   const todoTasks = brief.actionTasks.filter((item) => item.status === "todo");
   const worldChangeItems = brief.recommendations.filter((item) => item.signalLayer === "world-change").slice(0, 6);
   const appComplaintItems = brief.recommendations.filter((item) => item.signalLayer === "app-complaint").slice(0, 6);
   const marketItems = brief.recommendations.filter((item) => item.signalLayer === "market-watch").slice(0, 6);
   return [
-    `# Personal Command Brief - ${brief.generatedAt.slice(0, 10)}`,
+    `# Personal Command Brief - ${reportDate}`,
     "",
     "## Snapshot",
     `- Generated: ${brief.generatedAt}`,
@@ -1736,7 +1753,7 @@ async function writeReport(input: {
   appendLedgers?: boolean;
 }) {
   await mkdir(REPORTS_DIR, { recursive: true });
-  const path = resolve(REPORTS_DIR, `${input.brief.generatedAt.slice(0, 10)}.md`);
+  const path = resolve(REPORTS_DIR, `${productDateString(new Date(input.brief.generatedAt))}.md`);
   await writeFile(path, renderReport(input));
   await writePersonalReportIndex();
   if (input.appendLedgers === false) return path;
