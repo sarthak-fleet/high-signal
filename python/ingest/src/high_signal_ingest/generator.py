@@ -266,7 +266,7 @@ def _ai_complete(prompt: str, content: str) -> tuple[dict | None, dict]:
     base = os.environ.get(
         "AI_BASE_URL", "https://free-ai-gateway.sarthakagrawal927.workers.dev/v1"
     )
-    key = os.environ.get("AI_API_KEY") or os.environ.get("HF_TOKEN") or "open"
+    key = os.environ.get("AI_API_KEY") or os.environ.get("HF_TOKEN")
     model = os.environ.get("AI_MODEL", "auto")
     project_id = os.environ.get("AI_PROJECT_ID", "high-signal")
     meta: dict = {
@@ -281,6 +281,9 @@ def _ai_complete(prompt: str, content: str) -> tuple[dict | None, dict]:
     }
     if not base:
         meta["reason"] = "no_base_url"
+        return None, meta
+    if not key:
+        meta["reason"] = "no_api_key"
         return None, meta
     started = time.monotonic()
     try:
@@ -354,7 +357,7 @@ def generate(
         )
 
     if not out:
-        _record(False, None, "no_response")
+        _record(False, None, meta.get("reason") or "no_response")
         return None
     if not out.get("publish"):
         _record(False, None, "publish_false")

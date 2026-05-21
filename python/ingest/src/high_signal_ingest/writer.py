@@ -19,6 +19,12 @@ from .types import SignalCandidate
 
 
 LOGGER = logging.getLogger(__name__)
+FALLBACK_MARKER = "Fallback draft generated"
+
+
+def _review_status(candidate: SignalCandidate) -> str:
+    """Fallback candidates are internal review drafts, not public signals."""
+    return "draft" if FALLBACK_MARKER in candidate.body_md else "published"
 
 
 def _default_signals_root() -> Path:
@@ -50,7 +56,7 @@ def write_signal(candidate: SignalCandidate, root: Path | None = None) -> Path:
         "evidence_urls": [e.url for e in candidate.evidence],
         "spillover_entity_ids": candidate.spillover_entity_ids,
         "supersedes": candidate.supersedes_signal_id,
-        "review_status": "draft",
+        "review_status": _review_status(candidate),
     }
     body = candidate.body_md.strip()
     fp.write_text(
@@ -75,7 +81,7 @@ def write_signal_dict(d: dict, root: Path | None = None) -> Path:
 
 
 def push_signal(candidate: SignalCandidate) -> dict:
-    """POST a signal candidate to {API_BASE}/admin/sync as a draft upsert."""
+    """POST a signal candidate to {API_BASE}/admin/sync."""
     api = os.environ.get("API_BASE")
     token = os.environ.get("ADMIN_TOKEN")
     if not api or not token:
@@ -92,7 +98,7 @@ def push_signal(candidate: SignalCandidate) -> dict:
                 "publishedAt": candidate.published_at.isoformat(),
                 "evidenceUrls": [e.url for e in candidate.evidence],
                 "spilloverEntityIds": candidate.spillover_entity_ids,
-                "reviewStatus": "draft",
+                "reviewStatus": _review_status(candidate),
                 "supersedesSignalId": candidate.supersedes_signal_id,
                 "bodyMd": candidate.body_md,
             }

@@ -84,12 +84,12 @@ adminRoute.post("/sync", async (c) => {
     );
     createdEntities += created;
 
-    // Backfill signals (slug `bf-*`) skip the review queue — their forward
-    // window is already matured and we want them in /track-record immediately.
-    // Slug check wins over caller-supplied reviewStatus.
-    const reviewStatus = s.slug.startsWith("bf-")
-      ? "published"
-      : (s.reviewStatus ?? "draft");
+    // Auto-publish normal ingest, but preserve explicit drafts for fallback
+    // candidates that need review before entering the public feed.
+    const reviewStatus =
+      s.reviewStatus === "draft" || s.reviewStatus === "corrected"
+        ? s.reviewStatus
+        : "published";
 
     try {
       await db(c.env.DB)
