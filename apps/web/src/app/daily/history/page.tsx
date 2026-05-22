@@ -256,6 +256,12 @@ export default async function DailyHistoryPage({
         </div>
         <a
           className="mt-2 block font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-accent)] hover:underline"
+          href={`/daily/sources?date=${automationStatus.latestAcceptedDate ?? summary.to}`}
+        >
+          source audit
+        </a>
+        <a
+          className="mt-2 block font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-accent)] hover:underline"
           href="/daily/annotation.json"
         >
           annotation diagnostics
@@ -320,6 +326,9 @@ export default async function DailyHistoryPage({
                   </a>
                   <a className="text-zinc-500 hover:text-[var(--color-accent)]" href={`/daily/tasks.json?${tasksQuery}`}>
                     tasks json
+                  </a>
+                  <a className="text-zinc-500 hover:text-[var(--color-accent)]" href={`/daily/sources?date=${day.date}`}>
+                    source audit
                   </a>
                 </div>
               </div>

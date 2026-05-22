@@ -607,6 +607,14 @@ export default async function PersonalPage({
               </div>
             </div>
           </div>
+          <div className="mt-4 flex flex-wrap gap-4 font-mono text-[10px] uppercase tracking-[0.18em]">
+            <a className="text-[var(--color-accent)] hover:underline" href={`/daily/sources?date=${sourceReadDate}`}>
+              source audit
+            </a>
+            <a className="text-[var(--color-muted)] hover:text-[var(--color-accent)]" href={`/daily/sources.json?date=${sourceReadDate}`}>
+              sources json
+            </a>
+          </div>
           <div className="mt-6 divide-y divide-[var(--color-line)] border-y border-[var(--color-line)]">
             {sourceQualityAudit.actions.slice(0, 4).map((action) => (
               <div key={action.title} className="py-4">

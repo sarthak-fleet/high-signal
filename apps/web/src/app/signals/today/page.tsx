@@ -384,6 +384,12 @@ export default async function SignalsTodayPage({
           </div>
           <a
             className="mt-2 block font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-accent)] hover:underline"
+            href={`/daily/sources?date=${sourceReadDate}`}
+          >
+            source audit
+          </a>
+          <a
+            className="mt-2 block font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-accent)] hover:underline"
             href="/daily/annotation.json"
           >
             annotation diagnostics
