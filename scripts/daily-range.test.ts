@@ -24,9 +24,9 @@ assert.equal(swapped.from, "2026-05-20");
 assert.equal(swapped.to, "2026-05-22");
 
 async function main() {
-  const records = await readSourceRefreshes();
-  const dates = acceptedRefreshDates(records);
-  assert.ok(dates.length > 0);
+const records = await readSourceRefreshes();
+const dates = acceptedRefreshDates(records);
+  assert.ok(dates.length >= 30);
 
   const products = productGraph.products as PersonalProductProfile[];
   const summary = await buildDailyRangeSummary({
@@ -38,11 +38,11 @@ async function main() {
       requirement: true,
     },
     to: dates[0],
-    days: 7,
+    days: 30,
     includeTasks: true,
   });
 
-  assert.ok(summary.daysReturned > 0);
+  assert.equal(summary.daysReturned, 30);
   assert.ok(summary.totals.broadInsights >= summary.totals.requirements);
   assert.equal(summary.totals.taskExports, summary.days.reduce((sum, day) => sum + day.taskExportCount, 0));
   assert.equal(summary.totals.productRequirements, summary.days.reduce((sum, day) => sum + day.productRequirementCount, 0));

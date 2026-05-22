@@ -18,7 +18,8 @@ const SOURCE_PATH = resolve(ROOT, "data/product-flow-refresh.jsonl");
 const OUT_PATH = resolve(ROOT, "apps/web/src/data/daily-source-refreshes.json");
 
 function keyFor(record: ProductFlowRefreshRecord) {
-  return `${record.sourceId ?? record.label ?? record.target ?? record.source}:${record.period}`.toLowerCase();
+  const date = record.digest.snapshotDate.slice(0, 10);
+  return `${date}:${record.sourceId ?? record.label ?? record.target ?? record.source}:${record.period}`.toLowerCase();
 }
 
 function parseRecords(raw: string) {
