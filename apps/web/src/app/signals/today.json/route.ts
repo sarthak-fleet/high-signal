@@ -18,6 +18,7 @@ import {
   resolveAcceptedRefreshDate,
   readSourceRefreshes,
 } from "@/lib/daily-intelligence";
+import { buildDailyRequirementTaskExports } from "@/lib/daily-task-export";
 import productGraph from "../../../../../../data/personal-product-graph.json";
 import type { PersonalProductProfile } from "@high-signal/shared";
 
@@ -111,6 +112,7 @@ export async function GET(req: Request) {
   const productRequirementCount = allBroadInsights.filter((item) => item.annotation.productRequirement).length;
   const products = productGraph.products as PersonalProductProfile[];
   const requirementQueue = buildDailyRequirementQueue(broadInsights, 12, products);
+  const taskExports = buildDailyRequirementTaskExports(requirementQueue);
   const annotationRuntime = await dailyAnnotationRuntime();
   const items = [
     ...today.map((signal) => ({
@@ -160,6 +162,8 @@ export async function GET(req: Request) {
       domainCounts,
       productRequirementCount,
       requirementQueue,
+      taskExportCount: taskExports.length,
+      taskExports,
       intelligenceLayer: DAILY_INTELLIGENCE_LAYER,
       annotationRuntime,
       sourceCoverage,

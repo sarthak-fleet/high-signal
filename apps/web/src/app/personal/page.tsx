@@ -367,6 +367,7 @@ export default async function PersonalPage({
   const sourceReadSentiments = countByValues(sourceReads.map((item) => item.sentiment));
   const products = productGraph.products as PersonalProductProfile[];
   const requirementQueue = buildDailyRequirementQueue(sourceReads, 8, products);
+  const taskExportCount = requirementQueue.filter((item) => item.taskDraft).length;
   const annotationRuntime = await dailyAnnotationRuntime();
   const evidence = [
     ...evidenceFromMarketRefreshes(marketRefreshes),
@@ -555,9 +556,18 @@ export default async function PersonalPage({
                 <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-muted)]">
                   requirement queue
                 </div>
-                <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-muted)]">
-                  {requirementQueue.length} ranked
-                </div>
+                <a
+                  className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-accent)] hover:underline"
+                  href={`/daily/tasks.json?${dailyReadQuery({
+                    date: sourceReadDate,
+                    category: selectedReadCategory,
+                    layer: selectedReadLayer,
+                    domain: selectedReadDomain,
+                    requirement: true,
+                  })}`}
+                >
+                  export {taskExportCount} task{taskExportCount === 1 ? "" : "s"}
+                </a>
               </div>
               <div className="mt-4 divide-y divide-[var(--color-line)] border-y border-[var(--color-line)]">
                 {requirementQueue.map((item) => (

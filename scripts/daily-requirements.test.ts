@@ -1,6 +1,7 @@
 #!/usr/bin/env tsx
 import assert from "node:assert/strict";
 import { buildDailyRequirementQueue } from "../apps/web/src/lib/daily-requirements";
+import { buildDailyRequirementTaskExports } from "../apps/web/src/lib/daily-task-export";
 import type { DailyBroadInsight } from "../apps/web/src/lib/daily-intelligence";
 import productGraph from "../data/personal-product-graph.json";
 import type { LightweightNlpAnnotation, PersonalProductProfile } from "@high-signal/shared";
@@ -62,6 +63,11 @@ assert.equal(developerQueue[0]?.taskDraft?.saasMakerProjectSlug, "CodeVetter");
 assert.equal(developerQueue[0]?.taskDraft?.status, "todo");
 assert.equal(developerQueue[0]?.taskDraft?.syncStatus, "pending");
 assert.match(developerQueue[0]?.taskDraft?.title ?? "", /CodeVetter/);
+const developerTaskExports = buildDailyRequirementTaskExports(developerQueue);
+assert.equal(developerTaskExports.length, 1);
+assert.equal(developerTaskExports[0]?.projectSlug, "CodeVetter");
+assert.equal(developerTaskExports[0]?.priority, "medium");
+assert.match(developerTaskExports[0]?.description ?? "", /Generated from High Signal daily requirement/);
 
 const regionalQueue = buildDailyRequirementQueue(
   [

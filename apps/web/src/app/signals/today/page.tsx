@@ -155,6 +155,7 @@ export default async function SignalsTodayPage({
   const sourceDateShifted = sourceReadDate !== selectedDate;
   const products = productGraph.products as PersonalProductProfile[];
   const requirementQueue = buildDailyRequirementQueue(broadInsights, 6, products);
+  const taskExportCount = requirementQueue.filter((item) => item.taskDraft).length;
   const annotationRuntime = await dailyAnnotationRuntime();
 
   return (
@@ -401,9 +402,18 @@ export default async function SignalsTodayPage({
                 <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500">
                   requirement queue
                 </div>
-                <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-600">
-                  {requirementQueue.length} ranked
-                </div>
+                <a
+                  className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-accent)] hover:underline"
+                  href={`/daily/tasks.json?${dailyReadQuery({
+                    date: sourceReadDate,
+                    category: selectedCategory,
+                    layer: selectedLayer,
+                    domain: selectedDomain,
+                    requirement: true,
+                  })}`}
+                >
+                  export {taskExportCount} task{taskExportCount === 1 ? "" : "s"}
+                </a>
               </div>
               <div className="mt-4 divide-y divide-zinc-900 border-y border-zinc-900">
                 {requirementQueue.map((item) => (
