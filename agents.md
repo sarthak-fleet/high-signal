@@ -7,7 +7,7 @@ Also read and follow the shared fleet-level agent standard at `../AGENTS.md`. Tr
 ## Purpose
 **High Signal is the umbrella product for extracting actionable signals from noisy public and semi-public information streams.** The current AI-infra / semiconductors signal log remains the first Market Intelligence collection, but it is no longer the whole product direction.
 
-Full product brief: `SPEC.md`. Active top-level build plan: `plans/0004-platform-consolidation.md`. Agent evaluation plan: `plans/0006-agent-evaluation-attention-layer.md`. Market artifact plan: `plans/0001-research-artifact-first.md`.
+Full product brief: `SPEC.md`. Active top-level build plan: `plans/0004-platform-consolidation.md`. Agent evaluation plan: `plans/0006-agent-evaluation-attention-layer.md`. Market artifact plan: `plans/0001-research-artifact-first.md`. Intelligence substrate plan: `plans/0007-highsignal-lab-substrate.md`.
 
 ## Locked decisions
 - **Umbrella brand**: High Signal
@@ -20,6 +20,7 @@ Full product brief: `SPEC.md`. Active top-level build plan: `plans/0004-platform
 - **Market horizon**: weekly digest + on-event signal cards
 - **Market output channels**: public web page + RSS + Twitter thread per signal + weekly Substack digest
 - **Codename**: `high-signal` (rebrand TBD post-traction; collision with High Signal Labs / HQ)
+- **Intelligence substrate**: HighSignal Lab (plan `0007`) — a local-first single-Postgres ingestion + index layer over tech/startup primary sources — is the shared discovery substrate beneath every sub-product. The AI-infra signal log becomes a curated, evidence-first view on top of it; Lab does not replace the signal log, review queue, or hit-rate ledger.
 
 ## Considered and deferred
 - **Multi-collection engine for EverythingRated** (2026-04-26) — design archived at `plans/0003-multi-collection-for-everythingrated.md`. Not shipped; reopening trigger is in that file. Engine remains single-collection and AI-infra-only.
@@ -31,6 +32,7 @@ Do not delete or archive `mentionpilot` or `agentMode` until the relevant featur
 - **Web**: Next.js 16 (App Router, Turbopack) — `apps/web`
 - **API**: Hono on Cloudflare Workers — `workers/api`
 - **DB**: Cloudflare D1 + Drizzle — schema in `packages/db`
+- **Lab substrate**: local-first Postgres (FTS + `pgvector`) for HighSignal Lab ingestion/index — separate from the D1 signal store — `python/lab` (plan `0007`)
 - **Python ingestion + scoring**: edgartools, Trafilatura, GLiNER, GLiREL, NetworkX, FinBERT, VectorBT — runs on Modal.com — `python/ingest`
 - **Signal store**: git-versioned markdown under `signals/YYYY-MM-DD/<slug>.md` — append-only, never rewritten
 - **Auth**: Cloudflare Access (Google IdP via Zero Trust) — fronts `/review` and `/api/admin/*`. Server verifies the `Cf-Access-Jwt-Assertion` JWT against the team JWKS (`apps/web/src/lib/cf-access.ts`). No NextAuth, no `AUTH_SECRET`. Setup is dashboard-only; only env vars are `CF_ACCESS_AUD` + `CF_ACCESS_TEAM_DOMAIN`.
@@ -100,7 +102,7 @@ Reuse user's `@saas-maker/*` packages instead of rebuilding:
 - Agent UI / chat-over-docs (saturated by AlphaSense, Brightwave, Hebbia)
 - Generic reel generation without evidence, positioning, or agent-readiness scoring
 - Licensed datasets (premature)
-- Vector retrieval (defer until evidence search is the bottleneck)
+- Vector retrieval in the public signal product surface (defer until evidence search is the bottleneck) — the HighSignal Lab substrate (plan `0007`) does use `pgvector` internally; keep vector search inside Lab
 - Paid SaaS, billing, multi-tenancy
 - Mobile app, Discord/Slack alerts (RSS + email + Twitter is enough)
 
