@@ -382,6 +382,12 @@ export default async function SignalsTodayPage({
             {automationStatus.latestAcceptedDate ?? "none"} · accepted {automationStatus.acceptedSnapshots} / rejected{" "}
             {automationStatus.rejectedSnapshots} / missing {automationStatus.missingSources}
           </div>
+          <a
+            className="mt-2 block font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-accent)] hover:underline"
+            href="/daily/annotation.json"
+          >
+            annotation diagnostics
+          </a>
           <div className="mt-3 grid gap-4 text-xs leading-6 text-zinc-500 sm:grid-cols-3">
             {[
               ["audience", audienceCounts.map(([k, n]) => `${k.replaceAll("-", " ")} ${n}`).join(" / ") || "none"],

@@ -438,6 +438,11 @@ export default async function PersonalPage({
             Automation is {automationStatus.workflow} at {automationStatus.schedule}, currently{" "}
             {automationStatus.freshnessStatus}; latest accepted live source is{" "}
             {automationStatus.latestAcceptedDate ?? "none"}.
+            {" "}
+            <a className="text-[var(--color-accent)] hover:underline" href="/daily/annotation.json">
+              Annotation diagnostics
+            </a>
+            .
           </p>
           <form action="/personal" className="mt-5 grid gap-3 border-y border-[var(--color-line)] py-4 md:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_1fr_1fr_auto]">
             <input name="date" type="hidden" value={selectedReport?.date ?? ""} />

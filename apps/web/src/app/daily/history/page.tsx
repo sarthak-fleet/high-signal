@@ -254,6 +254,12 @@ export default async function DailyHistoryPage({
           {automationStatus.latestAcceptedDate ?? "none"} / accepted {automationStatus.acceptedSnapshots} / rejected{" "}
           {automationStatus.rejectedSnapshots} / missing {automationStatus.missingSources}
         </div>
+        <a
+          className="mt-2 block font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-accent)] hover:underline"
+          href="/daily/annotation.json"
+        >
+          annotation diagnostics
+        </a>
         <div className="mt-2 font-mono text-[11px] leading-6 text-zinc-500">
           requirement gate / score {DAILY_REQUIREMENT_GATE.minScore}+ / sources{" "}
           {DAILY_REQUIREMENT_GATE.minSourceCount}+ / repeats{" "}

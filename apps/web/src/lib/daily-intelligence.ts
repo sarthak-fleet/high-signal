@@ -614,6 +614,10 @@ export async function buildDailyBroadInsightsWithAnnotations(
   );
 }
 
+export async function annotateDailyTexts(texts: string[], options: DailyAnnotationOptions = {}) {
+  return annotateTexts(texts, await resolveDailyAnnotationOptions(options));
+}
+
 export function defaultDailyAnnotationOptions(): DailyAnnotationOptions {
   return {
     endpoint: process.env["HIGH_SIGNAL_ANNOTATION_ENDPOINT"] ?? null,
