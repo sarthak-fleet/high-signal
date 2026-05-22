@@ -640,6 +640,18 @@ export default async function PersonalPage({
                 <div className="flex flex-wrap gap-3">
                   <a
                     className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-accent)] hover:underline"
+                    href={`/daily/tasks?${dailyReadQuery({
+                      date: sourceReadDate,
+                      category: selectedReadCategory,
+                      layer: selectedReadLayer,
+                      domain: selectedReadDomain,
+                      requirement: true,
+                    })}`}
+                  >
+                    open {taskExportCount} task{taskExportCount === 1 ? "" : "s"}
+                  </a>
+                  <a
+                    className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-muted)] hover:text-[var(--color-accent)]"
                     href={`/daily/tasks.json?${dailyReadQuery({
                       date: sourceReadDate,
                       category: selectedReadCategory,
@@ -648,7 +660,7 @@ export default async function PersonalPage({
                       requirement: true,
                     })}`}
                   >
-                    export {taskExportCount} task{taskExportCount === 1 ? "" : "s"}
+                    tasks json
                   </a>
                   <a
                     className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-muted)] hover:text-[var(--color-accent)]"

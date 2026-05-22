@@ -439,6 +439,18 @@ export default async function SignalsTodayPage({
                 </div>
                 <a
                   className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-accent)] hover:underline"
+                  href={`/daily/tasks?${dailyReadQuery({
+                    date: sourceReadDate,
+                    category: selectedCategory,
+                    layer: selectedLayer,
+                    domain: selectedDomain,
+                    requirement: true,
+                  })}`}
+                >
+                  open {taskExportCount} task{taskExportCount === 1 ? "" : "s"}
+                </a>
+                <a
+                  className="font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500 hover:text-[var(--color-accent)]"
                   href={`/daily/tasks.json?${dailyReadQuery({
                     date: sourceReadDate,
                     category: selectedCategory,
@@ -447,7 +459,7 @@ export default async function SignalsTodayPage({
                     requirement: true,
                   })}`}
                 >
-                  export {taskExportCount} task{taskExportCount === 1 ? "" : "s"}
+                  tasks json
                 </a>
                 <a
                   className="font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500 hover:text-[var(--color-accent)]"

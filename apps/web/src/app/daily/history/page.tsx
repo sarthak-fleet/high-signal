@@ -324,8 +324,11 @@ export default async function DailyHistoryPage({
                   <a className="text-zinc-500 hover:text-[var(--color-accent)]" href={`/daily?${dayQuery}`}>
                     open daily
                   </a>
+                  <a className="text-zinc-500 hover:text-[var(--color-accent)]" href={`/daily/tasks?${tasksQuery}`}>
+                    tasks
+                  </a>
                   <a className="text-zinc-500 hover:text-[var(--color-accent)]" href={`/daily/tasks.json?${tasksQuery}`}>
-                    tasks json
+                    json
                   </a>
                   <a className="text-zinc-500 hover:text-[var(--color-accent)]" href={`/daily/sources?date=${day.date}`}>
                     source audit
