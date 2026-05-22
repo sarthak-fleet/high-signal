@@ -113,6 +113,17 @@ export type DailySourceCoverage = {
 
 export type DailyAnnotationOptions = AnnotationClientOptions;
 
+export type DailyAnnotationRuntime = {
+  activePath: "cloudflare-python-worker" | "local-typescript-fallback";
+  endpointConfigured: boolean;
+  method: "semantic-rules-v2";
+  llm: false;
+  model: "none";
+  huggingFaceBatchAvailable: boolean;
+  huggingFaceEnabledByDefault: false;
+  fallback: "local semantic-rules-v2 annotation";
+};
+
 export type SourceQualityStatus = "accepted" | "rejected" | "missing";
 
 export type SourceQualityRow = {
@@ -525,6 +536,20 @@ export async function buildDailyBroadInsightsWithAnnotations(
 export function defaultDailyAnnotationOptions(): DailyAnnotationOptions {
   return {
     endpoint: process.env["HIGH_SIGNAL_ANNOTATION_ENDPOINT"] ?? null,
+  };
+}
+
+export function dailyAnnotationRuntime(): DailyAnnotationRuntime {
+  const endpointConfigured = Boolean(process.env["HIGH_SIGNAL_ANNOTATION_ENDPOINT"]?.trim());
+  return {
+    activePath: endpointConfigured ? "cloudflare-python-worker" : "local-typescript-fallback",
+    endpointConfigured,
+    method: "semantic-rules-v2",
+    llm: false,
+    model: "none",
+    huggingFaceBatchAvailable: true,
+    huggingFaceEnabledByDefault: false,
+    fallback: "local semantic-rules-v2 annotation",
   };
 }
 

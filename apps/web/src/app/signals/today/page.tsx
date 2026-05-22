@@ -16,6 +16,7 @@ import {
   buildDailyBroadInsightsWithAnnotations,
   buildDailySourceCoverage,
   buildDailySourceQualityAudit,
+  dailyAnnotationRuntime,
   resolveAcceptedRefreshDate,
   DAILY_INTELLIGENCE_LAYER,
   defaultDailyAnnotationOptions,
@@ -151,6 +152,7 @@ export default async function SignalsTodayPage({
   const sourceQualityAudit = buildDailySourceQualityAudit(refreshes, sourceReadDate);
   const sourceDateShifted = sourceReadDate !== selectedDate;
   const requirementQueue = buildDailyRequirementQueue(broadInsights, 6);
+  const annotationRuntime = dailyAnnotationRuntime();
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-16">
@@ -361,8 +363,9 @@ export default async function SignalsTodayPage({
             intelligence layer
           </div>
           <div className="mt-2 font-mono text-[11px] leading-6 text-zinc-500">
-            {DAILY_INTELLIGENCE_LAYER.broadReadAnnotation.method} · model none · no LLM ·
-            Python/HF batch escalation off by default
+            active {annotationRuntime.activePath.replaceAll("-", " ")} ·{" "}
+            {DAILY_INTELLIGENCE_LAYER.broadReadAnnotation.method} · model none · no LLM · HF batch
+            available but off by default
           </div>
         </div>
       </section>
@@ -424,6 +427,13 @@ export default async function SignalsTodayPage({
                       </div>
                     </div>
                     <div className="mt-2 text-xs leading-5 text-zinc-600">{item.acceptanceCriteria[0]}</div>
+                    <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 font-mono text-[10px] uppercase tracking-[0.16em] text-zinc-600">
+                      {item.scoreBreakdown.map((part) => (
+                        <span key={part.label}>
+                          {part.label.replaceAll("-", " ")} {part.contribution}/{part.max}
+                        </span>
+                      ))}
+                    </div>
                   </a>
                 ))}
               </div>

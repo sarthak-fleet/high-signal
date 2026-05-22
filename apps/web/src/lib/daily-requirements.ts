@@ -20,6 +20,12 @@ export type DailyRequirementItem = {
   buyerIntentScore: number;
   actionabilityScore: number;
   qualityScore: number;
+  scoreBreakdown: Array<{
+    label: "actionability" | "buyer-intent" | "pain" | "quality" | "repetition";
+    value: number;
+    contribution: number;
+    max: number;
+  }>;
   sourceCount: number;
   repeatedSignalCount: number;
   suggestedBuild: string;
@@ -103,14 +109,44 @@ function acceptanceCriteriaFor(item: DailyBroadInsight) {
 }
 
 function scoreFor(item: DailyBroadInsight) {
-  const annotation = item.annotation;
-  const score =
-    annotation.actionabilityScore * 34 +
-    annotation.buyerIntentScore * 28 +
-    annotation.painScore * 18 +
-    item.qualityScore * 0.16 +
-    Math.min(item.repeatedSignalCount, 5) * 2;
+  const score = scoreBreakdownFor(item).reduce((sum, part) => sum + part.contribution, 0);
   return Math.round(Math.max(0, Math.min(100, score)));
+}
+
+function scoreBreakdownFor(item: DailyBroadInsight): DailyRequirementItem["scoreBreakdown"] {
+  const annotation = item.annotation;
+  return [
+    {
+      label: "actionability",
+      value: annotation.actionabilityScore,
+      contribution: Math.round(annotation.actionabilityScore * 34),
+      max: 34,
+    },
+    {
+      label: "buyer-intent",
+      value: annotation.buyerIntentScore,
+      contribution: Math.round(annotation.buyerIntentScore * 28),
+      max: 28,
+    },
+    {
+      label: "pain",
+      value: annotation.painScore,
+      contribution: Math.round(annotation.painScore * 18),
+      max: 18,
+    },
+    {
+      label: "quality",
+      value: item.qualityScore,
+      contribution: Math.round(item.qualityScore * 0.16),
+      max: 16,
+    },
+    {
+      label: "repetition",
+      value: item.repeatedSignalCount,
+      contribution: Math.min(item.repeatedSignalCount, 5) * 2,
+      max: 10,
+    },
+  ];
 }
 
 export function buildDailyRequirementQueue(insights: DailyBroadInsight[], limit = 12): DailyRequirementItem[] {
@@ -119,6 +155,7 @@ export function buildDailyRequirementQueue(insights: DailyBroadInsight[], limit 
     .map((item) => {
       const score = scoreFor(item);
       const suggestedBuild = suggestedBuildFor(item);
+      const scoreBreakdown = scoreBreakdownFor(item);
       return {
         id: `requirement-${item.id}`,
         title: item.title,
@@ -136,6 +173,7 @@ export function buildDailyRequirementQueue(insights: DailyBroadInsight[], limit 
         buyerIntentScore: item.annotation.buyerIntentScore,
         actionabilityScore: item.annotation.actionabilityScore,
         qualityScore: item.qualityScore,
+        scoreBreakdown,
         sourceCount: item.sourceCount,
         repeatedSignalCount: item.repeatedSignalCount,
         suggestedBuild,

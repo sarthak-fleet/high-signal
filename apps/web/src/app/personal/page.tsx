@@ -12,6 +12,7 @@ import {
   buildDailyBroadInsightsWithAnnotations,
   buildDailySourceCoverage,
   buildDailySourceQualityAudit,
+  dailyAnnotationRuntime,
   DAILY_INTELLIGENCE_LAYER,
   defaultDailyAnnotationOptions,
   readSourceRefreshes as readBundledSourceRefreshes,
@@ -365,6 +366,7 @@ export default async function PersonalPage({
   const sourceReadIntents = countByValues(sourceReads.map((item) => item.intent));
   const sourceReadSentiments = countByValues(sourceReads.map((item) => item.sentiment));
   const requirementQueue = buildDailyRequirementQueue(sourceReads, 8);
+  const annotationRuntime = dailyAnnotationRuntime();
   const evidence = [
     ...evidenceFromMarketRefreshes(marketRefreshes),
     ...evidenceFromMarketWatchConfig(marketWatch as MarketWatchConfig),
@@ -423,8 +425,9 @@ export default async function PersonalPage({
         <Panel eyebrow="source intelligence" title="What the reads layer is watching">
           <p className="mt-4 text-sm leading-6 text-[var(--color-muted)]">
             Latest accepted source date: {sourceReadDate}. Labels use{" "}
-            {DAILY_INTELLIGENCE_LAYER.broadReadAnnotation.method}; no LLM is used for this daily
-            annotation pass.
+            {DAILY_INTELLIGENCE_LAYER.broadReadAnnotation.method} through{" "}
+            {annotationRuntime.activePath.replaceAll("-", " ")}; no LLM is used for this daily
+            annotation pass. Hugging Face enrichment exists only as an optional batch path right now.
           </p>
           <form action="/personal" className="mt-5 grid gap-3 border-y border-[var(--color-line)] py-4 md:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_1fr_1fr_auto]">
             <input name="date" type="hidden" value={selectedReport?.date ?? ""} />
@@ -576,6 +579,13 @@ export default async function PersonalPage({
                     </div>
                     <div className="mt-2 text-xs leading-5 text-[var(--color-muted)]">
                       {item.acceptanceCriteria[0]}
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--color-muted)]">
+                      {item.scoreBreakdown.map((part) => (
+                        <span key={part.label}>
+                          {part.label.replaceAll("-", " ")} {part.contribution}/{part.max}
+                        </span>
+                      ))}
                     </div>
                     <div className="mt-2 font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--color-muted)]">
                       {item.domains.join("/") || "no domain"} / pain {item.painScore.toFixed(2)} / buyer{" "}

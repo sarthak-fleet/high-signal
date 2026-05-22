@@ -12,6 +12,7 @@ import {
   buildDailyBroadInsightsWithAnnotations,
   buildDailySourceCoverage,
   buildDailySourceQualityAudit,
+  dailyAnnotationRuntime,
   DAILY_INTELLIGENCE_LAYER,
   defaultDailyAnnotationOptions,
   resolveAcceptedRefreshDate,
@@ -107,6 +108,7 @@ export async function GET(req: Request) {
   const domainCounts = countBy(allBroadInsights.flatMap((item) => item.annotation.domains));
   const productRequirementCount = allBroadInsights.filter((item) => item.annotation.productRequirement).length;
   const requirementQueue = buildDailyRequirementQueue(broadInsights, 12);
+  const annotationRuntime = dailyAnnotationRuntime();
   const items = [
     ...today.map((signal) => ({
       kind: "signal" as const,
@@ -156,6 +158,7 @@ export async function GET(req: Request) {
       productRequirementCount,
       requirementQueue,
       intelligenceLayer: DAILY_INTELLIGENCE_LAYER,
+      annotationRuntime,
       sourceCoverage,
       sourceQualityAudit,
       items,
