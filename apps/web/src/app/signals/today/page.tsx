@@ -11,6 +11,7 @@ import {
   safeReadDomain,
   safeReadLayer,
 } from "@/lib/daily-read-filters";
+import { buildDailyRequirementQueue } from "@/lib/daily-requirements";
 import {
   buildDailyBroadInsightsWithAnnotations,
   buildDailySourceCoverage,
@@ -149,6 +150,7 @@ export default async function SignalsTodayPage({
   const coverage = buildDailySourceCoverage(refreshes, sourceReadDate);
   const sourceQualityAudit = buildDailySourceQualityAudit(refreshes, sourceReadDate);
   const sourceDateShifted = sourceReadDate !== selectedDate;
+  const requirementQueue = buildDailyRequirementQueue(broadInsights, 6);
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-16">
@@ -387,6 +389,35 @@ export default async function SignalsTodayPage({
 
       {broadInsights.length > 0 ? (
         <section className="mt-8 border-y border-zinc-800 py-6">
+          {requirementQueue.length > 0 ? (
+            <div className="mb-6 border-b border-zinc-900 pb-6">
+              <div className="flex items-baseline justify-between gap-4">
+                <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500">
+                  requirement queue
+                </div>
+                <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-600">
+                  {requirementQueue.length} ranked
+                </div>
+              </div>
+              <div className="mt-4 divide-y divide-zinc-900 border-y border-zinc-900">
+                {requirementQueue.map((item) => (
+                  <a className="block py-4 hover:text-[var(--color-accent)]" href={item.href} key={item.id}>
+                    <div className="flex flex-wrap gap-x-3 gap-y-1 font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500">
+                      <span>{item.priority}</span>
+                      <span className="text-zinc-700">·</span>
+                      <span>score {item.score}</span>
+                      <span className="text-zinc-700">·</span>
+                      <span>{item.suggestedBuild}</span>
+                      <span className="text-zinc-700">·</span>
+                      <span>{item.domains.join("/") || "no domain"}</span>
+                    </div>
+                    <div className="mt-2 text-base font-medium leading-snug text-zinc-100">{item.title}</div>
+                    <p className="mt-2 text-xs leading-5 text-zinc-500">{item.nextStep}</p>
+                  </a>
+                ))}
+              </div>
+            </div>
+          ) : null}
           <div className="flex items-baseline justify-between gap-4">
             <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500">
               broad public / startup / smb reads

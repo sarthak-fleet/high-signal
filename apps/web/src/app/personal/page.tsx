@@ -25,6 +25,7 @@ import {
   safeReadDomain,
   safeReadLayer,
 } from "@/lib/daily-read-filters";
+import { buildDailyRequirementQueue } from "@/lib/daily-requirements";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import marketWatch from "../../../../../data/personal-market-watch.json";
@@ -363,6 +364,7 @@ export default async function PersonalPage({
   const sourceReadDomains = countByValues(sourceReadsAll.flatMap((item) => item.annotation.domains));
   const sourceReadIntents = countByValues(sourceReads.map((item) => item.intent));
   const sourceReadSentiments = countByValues(sourceReads.map((item) => item.sentiment));
+  const requirementQueue = buildDailyRequirementQueue(sourceReads, 8);
   const evidence = [
     ...evidenceFromMarketRefreshes(marketRefreshes),
     ...evidenceFromMarketWatchConfig(marketWatch as MarketWatchConfig),
@@ -544,6 +546,33 @@ export default async function PersonalPage({
               </div>
             ))}
           </div>
+          {requirementQueue.length > 0 ? (
+            <div className="mt-6 border-y border-[var(--color-line)] py-5">
+              <div className="flex items-baseline justify-between gap-4">
+                <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-muted)]">
+                  requirement queue
+                </div>
+                <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-muted)]">
+                  {requirementQueue.length} ranked
+                </div>
+              </div>
+              <div className="mt-4 divide-y divide-[var(--color-line)] border-y border-[var(--color-line)]">
+                {requirementQueue.map((item) => (
+                  <a key={item.id} className="block py-4 hover:text-[var(--color-accent)]" href={item.href}>
+                    <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-muted)]">
+                      {item.priority} / score {item.score} / {item.suggestedBuild}
+                    </div>
+                    <div className="mt-2 text-sm leading-6 text-[var(--color-fg)]">{item.title}</div>
+                    <div className="mt-1 text-xs leading-5 text-[var(--color-muted)]">{item.nextStep}</div>
+                    <div className="mt-2 font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--color-muted)]">
+                      {item.domains.join("/") || "no domain"} / pain {item.painScore.toFixed(2)} / buyer{" "}
+                      {item.buyerIntentScore.toFixed(2)} / action {item.actionabilityScore.toFixed(2)}
+                    </div>
+                  </a>
+                ))}
+              </div>
+            </div>
+          ) : null}
           <div className="mt-6 grid gap-5 md:grid-cols-3">
             {[
               ["category", countLine(sourceReadCategories)],

@@ -7,6 +7,7 @@ import {
   safeReadDomain,
   safeReadLayer,
 } from "@/lib/daily-read-filters";
+import { buildDailyRequirementQueue } from "@/lib/daily-requirements";
 import {
   buildDailyBroadInsightsWithAnnotations,
   buildDailySourceCoverage,
@@ -105,6 +106,7 @@ export async function GET(req: Request) {
   const layerCounts = countBy(allBroadInsights.map((item) => item.annotation.signalLayer));
   const domainCounts = countBy(allBroadInsights.flatMap((item) => item.annotation.domains));
   const productRequirementCount = allBroadInsights.filter((item) => item.annotation.productRequirement).length;
+  const requirementQueue = buildDailyRequirementQueue(broadInsights, 12);
   const items = [
     ...today.map((signal) => ({
       kind: "signal" as const,
@@ -152,6 +154,7 @@ export async function GET(req: Request) {
       layerCounts,
       domainCounts,
       productRequirementCount,
+      requirementQueue,
       intelligenceLayer: DAILY_INTELLIGENCE_LAYER,
       sourceCoverage,
       sourceQualityAudit,
