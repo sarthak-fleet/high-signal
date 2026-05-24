@@ -17,6 +17,8 @@ apps/web/.clerk/
 *.key
 *.tsbuildinfo
 .dev.vars
+__pycache__/
+*.py[cod]
 
 .DS_Store
 *.log
