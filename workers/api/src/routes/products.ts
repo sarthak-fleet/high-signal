@@ -6,6 +6,7 @@ import { generateCommunityDigest } from "../lib/community-research";
 import { searchExternalMentions } from "../lib/external-monitors";
 import { runMentionCheck } from "../lib/mention-execution";
 import { executePromptsWithAI } from "../lib/agent-evaluation-execution";
+import { runSeoAudit } from "../lib/seo-audit";
 import { buildAgentEvaluationAudit, normalizeCommunitySummary } from "@high-signal/shared";
 import type {
   AgentEvaluationAudit,
@@ -122,6 +123,24 @@ productsRoute.get("/dashboard", async (c) => {
       latestDigests,
     }),
   );
+});
+
+/**
+ * Live SEO/GEO audit of any URL. Public, no owner required — this is the
+ * lens we point at customer brands AND at highsignal.app itself.
+ *
+ *   GET /products/agent-eval/seo-audit?url=https://example.com
+ *
+ * Cached 10 minutes per URL via CF edge headers.
+ */
+productsRoute.get("/agent-eval/seo-audit", async (c) => {
+  const url = c.req.query("url")?.trim();
+  if (!url) return c.json({ error: "missing_url" }, 400);
+  if (!/^https?:\/\//i.test(url)) return c.json({ error: "invalid_url" }, 400);
+  const report = await runSeoAudit(url);
+  return c.json(report, 200, {
+    "Cache-Control": "public, max-age=600, s-maxage=600",
+  });
 });
 
 productsRoute.get("/agent-eval/audits", async (c) => {

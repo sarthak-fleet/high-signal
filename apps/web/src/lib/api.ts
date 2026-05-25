@@ -332,6 +332,10 @@ export const api = {
     fetchJson<AgentEvaluationAuditDetail>(
       `/products/agent-eval/audits/${encodeURIComponent(id)}?${new URLSearchParams({ owner: ownerId })}`,
     ),
+  seoAudit: (url: string) =>
+    fetchJson<SeoAuditReport>(
+      `/products/agent-eval/seo-audit?${new URLSearchParams({ url })}`,
+    ),
   trackedCommunities: (ownerId: string) =>
     fetchJson<{ communities: TrackedCommunity[] }>(
       `/products/communities/tracked?${new URLSearchParams({ owner: ownerId })}`,
@@ -451,6 +455,29 @@ export const api = {
     return (await r.json()) as LabFeedResult;
   },
 };
+
+export interface SeoCheckResult {
+  key: string;
+  title: string;
+  axis: "seo" | "geo" | "both";
+  status: "strong" | "clear" | "weak" | "missing";
+  notes: string;
+  recommendation: string;
+}
+
+export interface SeoAuditReport {
+  url: string;
+  fetchedAt: string;
+  finalUrl: string;
+  status: number | null;
+  score: number;
+  seoScore: number;
+  geoScore: number;
+  band: "strong" | "clear" | "weak" | "missing";
+  checks: SeoCheckResult[];
+  evidenceUrls: string[];
+  error: string | null;
+}
 
 export interface LabFeedItem {
   id: string;
