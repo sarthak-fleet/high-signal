@@ -1,0 +1,39 @@
+name: cron-publish
+
+on:
+  schedule:
+    # 07:00 UTC daily — 1h after cron-ingest, 30 min before personal-brief.
+    # Clears the draft queue without manual review (sarthak's directive).
+    - cron: "0 7 * * *"
+  workflow_dispatch:
+    inputs:
+      dry:
+        description: dry-run (judge but don't PATCH)
+        type: boolean
+        default: false
+
+jobs:
+  auto-publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: auto-publish drafts
+        env:
+          API_BASE: ${{ secrets.API_BASE || 'https://high-signal-api.sarthakagrawal927.workers.dev' }}
+          ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
+          AI_BASE_URL: ${{ secrets.AI_BASE_URL || 'https://api.deepseek.com/v1' }}
+          AI_API_KEY: ${{ secrets.AI_API_KEY }}
+          AI_MODEL: ${{ secrets.AI_MODEL || 'deepseek-chat' }}
+        run: |
+          if [ "${{ inputs.dry }}" = "true" ]; then
+            pnpm signals:auto-publish:dry
+          else
+            pnpm signals:auto-publish:remote
+          fi

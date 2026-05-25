@@ -88,7 +88,7 @@ research/              # Domain notes, source experiments, prompt drafts, market
 - **Versioned signal memory** — signal log is git; corrections are new signals citing prior
 - **Confidence as a band** — `low` / `medium` / `high`, calibrated post-hoc against hit-rate
 - **Public hit-rate ledger from day 1** — moat that competitors can't copy without rebuilding
-- **Manual review queue** — first 4 weeks, every signal + every new graph edge gates through human review
+- **Auto-publish, no human gate** — Sarthak's 2026-05-26 directive: "I don't want it blocked by me." A daily `cron-publish.yml` workflow runs `scripts/auto-publish-drafts.ts` at 07:00 UTC. The deterministic rubric (≥ 2 independent source classes → publish; manifold-only fallback drafts → kill) handles the unambiguous cases; an AI judge (DeepSeek by default, OpenAI-compatible) fires only for genuinely borderline drafts. Bias toward decision over hold so the queue stays clear. The `/review` page remains accessible as an override surface but is not on the daily critical path.
 - **World change → product opportunity** — major changes and repeated app complaints should become concrete product ideas with target user, why-now, evidence, and next validation step
 - **Human attention + agent evaluation** — short-form content earns consideration; structured evidence earns recommendation
 
