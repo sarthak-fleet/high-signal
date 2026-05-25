@@ -61,6 +61,10 @@ export default async function SignalDetail({ params }: { params: Promise<{ slug:
   }
   const { signal, evidence, scores } = data;
   if (isBackfillSignal(signal)) return notFound();
+  // Public detail surface should only render published signals.
+  // Drafts, killed, and corrected rows 404 — they live in /review for
+  // operators with admin access.
+  if (signal.reviewStatus !== "published") return notFound();
   const headline = signalHeadline(signal.bodyMd, signal.slug);
   const summary = signalSummary(signal.bodyMd, signal.slug, 720);
   const price = pricedInContext(signal.primaryEntityId, signal.direction);
