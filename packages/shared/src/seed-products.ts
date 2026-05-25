@@ -437,6 +437,166 @@ export const SEED_PRODUCTS: SeedProduct[] = [
       { area: "comparisons", task: "Paytm vs PhonePe vs GooglePay fee + KYC comparison.", priority: "medium" },
     ],
   },
+  // --- East Asia ---------------------------------------------------------
+  {
+    id: "tencent",
+    brandName: "Tencent",
+    brandUrl: "https://tencent.com",
+    domain: "technology",
+    region: "east-asia",
+    perception: { mentionRate: 0.88, positiveShare: 0.62, competitorPresence: 0.79 },
+    improvements: [
+      { area: "transaction readiness", task: "Make WeChat Pay onboarding for non-CN merchants legible to agents.", priority: "high" },
+    ],
+  },
+  {
+    id: "bytedance",
+    brandName: "ByteDance",
+    brandUrl: "https://bytedance.com",
+    domain: "technology",
+    region: "east-asia",
+    perception: { mentionRate: 0.92, positiveShare: 0.54, competitorPresence: 0.83 },
+    improvements: [
+      { area: "policies", task: "Data-localisation posture per market is the recurring question.", priority: "high" },
+      { area: "comparisons", task: "TikTok-for-Business vs Meta ads decision tree for SMBs.", priority: "medium" },
+    ],
+  },
+  {
+    id: "alibaba-cloud",
+    brandName: "Alibaba Cloud",
+    brandUrl: "https://www.alibabacloud.com",
+    domain: "technology",
+    region: "east-asia",
+    perception: { mentionRate: 0.71, positiveShare: 0.58, competitorPresence: 0.84 },
+    improvements: [
+      { area: "comparisons", task: "Alibaba Cloud vs AWS / GCP in SEA market head-to-heads.", priority: "high" },
+    ],
+  },
+  {
+    id: "sk-hynix",
+    brandName: "SK Hynix",
+    brandUrl: "https://www.skhynix.com",
+    domain: "technology",
+    region: "east-asia",
+    perception: { mentionRate: 0.77, positiveShare: 0.74, competitorPresence: 0.71 },
+    improvements: [
+      { area: "proof", task: "HBM3E customer wins + ramp data deserve a public dashboard.", priority: "medium" },
+    ],
+  },
+  {
+    id: "rakuten",
+    brandName: "Rakuten",
+    brandUrl: "https://global.rakuten.com",
+    domain: "startups",
+    region: "east-asia",
+    perception: { mentionRate: 0.62, positiveShare: 0.61, competitorPresence: 0.68 },
+    improvements: [
+      { area: "positioning", task: "English-language positioning is unclear vs the JP-market story.", priority: "high" },
+    ],
+  },
+  // --- MENA --------------------------------------------------------------
+  {
+    id: "careem",
+    brandName: "Careem",
+    brandUrl: "https://careem.com",
+    domain: "startups",
+    region: "mena",
+    perception: { mentionRate: 0.68, positiveShare: 0.66, competitorPresence: 0.62 },
+    improvements: [
+      { area: "comparisons", task: "Careem Pay vs STC Pay vs Tabby for UAE/KSA merchants.", priority: "high" },
+    ],
+  },
+  {
+    id: "tamara",
+    brandName: "Tamara",
+    brandUrl: "https://tamara.co",
+    domain: "finance",
+    region: "mena",
+    perception: { mentionRate: 0.41, positiveShare: 0.73, competitorPresence: 0.79 },
+    improvements: [
+      { area: "proof", task: "Repayment-quality numbers vs Tabby would close the trust gap.", priority: "high" },
+    ],
+  },
+  {
+    id: "anghami",
+    brandName: "Anghami",
+    brandUrl: "https://anghami.com",
+    domain: "startups",
+    region: "mena",
+    perception: { mentionRate: 0.39, positiveShare: 0.69, competitorPresence: 0.81 },
+    improvements: [
+      { area: "comparisons", task: "Anghami vs Spotify catalogue + artist-payout transparency.", priority: "medium" },
+    ],
+  },
+  // --- Africa ------------------------------------------------------------
+  {
+    id: "flutterwave",
+    brandName: "Flutterwave",
+    brandUrl: "https://flutterwave.com",
+    domain: "finance",
+    region: "africa",
+    perception: { mentionRate: 0.64, positiveShare: 0.58, competitorPresence: 0.74 },
+    improvements: [
+      { area: "policies", task: "Regulator-action history needs an authoritative, dated public log.", priority: "high" },
+      { area: "comparisons", task: "Flutterwave vs Paystack vs Cellulant for cross-border SMB merchants.", priority: "medium" },
+    ],
+  },
+  {
+    id: "mpesa",
+    brandName: "M-Pesa",
+    brandUrl: "https://www.safaricom.co.ke/personal/m-pesa",
+    domain: "finance",
+    region: "africa",
+    perception: { mentionRate: 0.79, positiveShare: 0.81, competitorPresence: 0.51 },
+    improvements: [
+      { area: "docs", task: "Daraja API quickstart could be much friendlier for indie devs.", priority: "medium" },
+    ],
+  },
+  {
+    id: "chipper-cash",
+    brandName: "Chipper Cash",
+    brandUrl: "https://chippercash.com",
+    domain: "finance",
+    region: "africa",
+    perception: { mentionRate: 0.43, positiveShare: 0.61, competitorPresence: 0.72 },
+    improvements: [
+      { area: "transaction readiness", task: "Self-serve flow for business accounts across NG/KE/UG/RW.", priority: "high" },
+    ],
+  },
+  // --- Oceania -----------------------------------------------------------
+  {
+    id: "atlassian",
+    brandName: "Atlassian",
+    brandUrl: "https://atlassian.com",
+    domain: "technology",
+    region: "oceania",
+    perception: { mentionRate: 0.86, positiveShare: 0.58, competitorPresence: 0.82 },
+    improvements: [
+      { area: "comparisons", task: "Cloud-tier pricing post-Data-Center deprecation needs a clear calculator.", priority: "high" },
+    ],
+  },
+  {
+    id: "canva",
+    brandName: "Canva",
+    brandUrl: "https://canva.com",
+    domain: "technology",
+    region: "oceania",
+    perception: { mentionRate: 0.94, positiveShare: 0.84, competitorPresence: 0.68 },
+    improvements: [
+      { area: "comparisons", task: "Canva Enterprise vs Figma Slides vs Adobe Express side-by-side.", priority: "medium" },
+    ],
+  },
+  {
+    id: "airwallex",
+    brandName: "Airwallex",
+    brandUrl: "https://airwallex.com",
+    domain: "finance",
+    region: "oceania",
+    perception: { mentionRate: 0.58, positiveShare: 0.74, competitorPresence: 0.71 },
+    improvements: [
+      { area: "comparisons", task: "Airwallex vs Wise Business vs Mercury for global startups.", priority: "high" },
+    ],
+  },
 ];
 
 export function listSeedProducts(filter: { region?: Region } = {}): SeedProduct[] {

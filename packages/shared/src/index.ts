@@ -39,6 +39,7 @@ export * from "./signal-intelligence";
 export * from "./lightweight-nlp";
 export * from "./annotation-client";
 export * from "./region";
+export * from "./signal-families";
 export * from "./brief";
 export * from "./seed-products";
 export * from "./seed-content";

@@ -5,6 +5,8 @@ import {
   fallbackIdeas,
   fallbackStocks,
   fallbackTrends,
+  familyForSignalType,
+  familyLabel,
   findSeedProduct,
   isRegion,
   REGIONS,
@@ -14,15 +16,19 @@ import {
   SEED_STOCK_SIGNALS,
   SEED_TRENDS,
   type Region,
+  type SignalFamily,
 } from "@high-signal/shared";
 import {
   computeHitRate,
   headlineFromBody,
+  HIT_RATE_FAMILY_MIN,
   HIT_RATE_SAMPLE_MIN,
   pickSpotlight,
   rankStocks,
   renderFromSeed,
+  resolveHitRate,
   seedToBrief,
+  type BucketCounts,
 } from "../routes/brief";
 
 describe("region rollups", () => {
@@ -203,9 +209,18 @@ describe("brief seed fallback", () => {
     expect(naOnly?.region).toBe("north-america");
   });
 
-  it("pickSpotlight returns null when no products match the region", () => {
-    // Africa has zero seed products today.
-    expect(pickSpotlight("africa")).toBeNull();
+  it("pickSpotlight returns null only when no products match the region", () => {
+    // Every demo region now has at least one seed product after the SSS
+    // upgrade — if a region were to lose its seeds entirely we'd want
+    // this to start failing to flag the regression.
+    for (const region of DEMO_REGIONS) {
+      if (region === "global") continue;
+      expect(pickSpotlight(region, 1_700_000_000_000)).not.toBeNull();
+    }
+    // A genuinely non-existent region (after isRegion gate would never
+    // reach this code path) returns null. The whole code path is type-safe
+    // so we cast to test the defensive branch only.
+    expect(pickSpotlight("global", 0)).not.toBeNull();
   });
 });
 
@@ -265,9 +280,114 @@ describe("brief seed-content fallback (public sections)", () => {
     }
   });
 
-  it("fallbacks return empty arrays for regions with no seeded entries", () => {
-    expect(fallbackStocks("africa", 10)).toEqual([]);
-    // ideas and trends include "global" so they always return something
-    // — only stocks are strictly region-pinned.
+  it("every surfaced region has at least one seeded stock", () => {
+    for (const region of DEMO_REGIONS) {
+      const items = fallbackStocks(region, 12);
+      expect(items.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("every surfaced region has at least one seeded idea", () => {
+    for (const region of DEMO_REGIONS) {
+      const items = fallbackIdeas(region, 10);
+      expect(items.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("every surfaced region has at least one seeded trend", () => {
+    for (const region of DEMO_REGIONS) {
+      const items = fallbackTrends(region, 10);
+      expect(items.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("every demo region has at least one seed product", () => {
+    for (const region of DEMO_REGIONS) {
+      if (region === "global") continue;
+      const products = SEED_PRODUCTS.filter((p) => p.region === region);
+      expect(products.length).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe("signal-family fallback", () => {
+  it("maps common AI-infra signal types to supply-demand or ai-adoption", () => {
+    expect(familyForSignalType("capex_raise")).toBe("supply-demand");
+    expect(familyForSignalType("gpu_lead_time_shift")).toBe("supply-demand");
+    expect(familyForSignalType("hbm_supply_warning")).toBe("supply-demand");
+    expect(familyForSignalType("ai_deal_velocity")).toBe("ai-adoption");
+    expect(familyForSignalType("cloud_recovery")).toBe("ai-adoption");
+  });
+
+  it("falls back to 'other' for unknown signal types", () => {
+    expect(familyForSignalType("some_brand_new_signal_we_havent_seen")).toBe("other");
+  });
+
+  it("familyLabel returns a non-empty string for every family", () => {
+    const families: SignalFamily[] = [
+      "supply-demand",
+      "ai-adoption",
+      "macro-demand",
+      "capital-allocation",
+      "consumer-behavior",
+      "platform-momentum",
+      "regulatory-shift",
+      "other",
+    ];
+    for (const family of families) {
+      expect(familyLabel(family).length).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe("brief hit-rate resolver", () => {
+  it("picks 'direct' when the exact signal type has enough sample", () => {
+    const byType = new Map<string, BucketCounts>([
+      ["capex_raise", { hit: 5, miss: 2, push: 1 }],
+    ]);
+    const byFamily = new Map<SignalFamily, BucketCounts>();
+    const r = resolveHitRate("capex_raise", byType, byFamily);
+    expect(r.band).toBe("direct");
+    expect(r.sample).toBe(7);
+    expect(r.hitRate).toBeCloseTo(5 / 7);
+  });
+
+  it("falls back to family rate when exact type is too thin", () => {
+    const byType = new Map<string, BucketCounts>([
+      ["new_capex_variant", { hit: 0, miss: 0, push: 0 }],
+    ]);
+    const byFamily = new Map<SignalFamily, BucketCounts>([
+      ["supply-demand", { hit: 6, miss: 4, push: 2 }],
+    ]);
+    const r = resolveHitRate("new_capex_variant", byType, byFamily);
+    expect(r.band).toBe("family");
+    expect(r.sample).toBeGreaterThanOrEqual(HIT_RATE_FAMILY_MIN);
+    expect(r.hitRate).toBeCloseTo(6 / 10);
+  });
+
+  it("surfaces 'early' when family has any decided but below family min", () => {
+    const byFamily = new Map<SignalFamily, BucketCounts>([
+      ["ai-adoption", { hit: 1, miss: 1, push: 0 }],
+    ]);
+    const r = resolveHitRate("ai_deal_velocity", new Map(), byFamily);
+    expect(r.band).toBe("early");
+    expect(r.sample).toBe(2);
+  });
+
+  it("returns 'none' when nothing has been scored anywhere relevant", () => {
+    const r = resolveHitRate("totally_new_signal", new Map(), new Map());
+    expect(r.band).toBe("none");
+    expect(r.hitRate).toBeNull();
+    expect(r.sample).toBe(0);
+  });
+
+  it("uses direct early-band if the exact type has only 1 scored", () => {
+    const byType = new Map<string, BucketCounts>([
+      ["fresh_type", { hit: 1, miss: 0, push: 0 }],
+    ]);
+    const r = resolveHitRate("fresh_type", byType, new Map());
+    expect(r.band).toBe("early");
+    expect(r.sample).toBe(1);
+    expect(r.hitRate).toBe(1);
   });
 });

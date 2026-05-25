@@ -67,6 +67,20 @@ function formatPct(value: number | null) {
 }
 
 function StockItem({ item }: { item: BriefStockItem }) {
+  const bandCopy =
+    item.hitRateBand === "direct"
+      ? "this signal type"
+      : item.hitRateBand === "family"
+        ? `family rate — ${item.signalFamily.replaceAll("-", " ")}`
+        : item.hitRateBand === "early"
+          ? "early calls"
+          : "no live calls yet";
+  const hitRateColor =
+    item.hitRate == null
+      ? "text-[var(--color-muted)]"
+      : item.hitRate >= 0.5
+        ? "text-[var(--color-accent)]"
+        : "text-rose-300";
   return (
     <article className="grid gap-3 border-b border-[var(--color-line)] py-5 md:grid-cols-[1fr_220px]">
       <div>
@@ -98,21 +112,13 @@ function StockItem({ item }: { item: BriefStockItem }) {
         ) : null}
       </div>
       <div className="border border-[var(--color-line)] p-3 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-muted)]">
-        <div>this signal type</div>
-        <div
-          className={`mt-2 text-xl font-medium ${
-            item.hitRate == null
-              ? "text-[var(--color-muted)]"
-              : item.hitRate >= 0.5
-                ? "text-[var(--color-accent)]"
-                : "text-rose-300"
-          }`}
-        >
+        <div>{bandCopy}</div>
+        <div className={`mt-2 text-xl font-medium ${hitRateColor}`}>
           {item.hitRate == null ? "no live calls yet" : `${(item.hitRate * 100).toFixed(0)}% hit-rate`}
         </div>
         <div className="mt-1 text-[var(--color-muted)]">
           {item.hitRateSample
-            ? `${item.hitRateSample} scored calls`
+            ? `${item.hitRateSample} scored ${item.hitRateBand === "family" ? "across family" : "calls"}`
             : "pending — backfill not counted"}
         </div>
         <Link

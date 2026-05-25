@@ -20,12 +20,28 @@ export interface BriefCitation {
   source?: string | null;
 }
 
+/**
+ * How the inline hit-rate column on a stock card should render.
+ *
+ * - `direct`: enough scored predictions on this exact signal_type to quote
+ *   the rate with confidence.
+ * - `family`: not enough on the exact type yet, so we show the broader
+ *   *family* hit-rate (capex/order-book → "supply-demand", etc.) — still
+ *   useful, lower-precision.
+ * - `early`: a small live sample (1–2 scored calls) exists; we surface the
+ *   number with an "early" qualifier so users see motion, not silence.
+ * - `none`: no scored predictions anywhere in the family — render "no live
+ *   calls yet" and the project gets to keep its honesty.
+ */
+export type HitRateBand = "direct" | "family" | "early" | "none";
+
 export interface BriefStockItem {
   entityId: string;
   entityName: string;
   ticker: string | null;
   country: string | null;
   signalType: string;
+  signalFamily: string;
   direction: "up" | "down" | "neutral";
   confidence: "low" | "medium" | "high";
   predictedWindowDays: number;
@@ -34,11 +50,13 @@ export interface BriefStockItem {
   publishedAt: string;
   evidenceUrls: BriefCitation[];
   /**
-   * Project's prior hit-rate on this signal type. Null = not enough scored
-   * predictions yet. Inline in the UI per the moat principle.
+   * Project's prior hit-rate on this signal type or family. Null only when
+   * the family also has no scored calls. Always paired with `hitRateBand`
+   * so the renderer can label precision accurately.
    */
   hitRate: number | null;
   hitRateSample: number;
+  hitRateBand: HitRateBand;
 }
 
 export interface BriefIdeaItem {

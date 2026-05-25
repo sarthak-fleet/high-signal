@@ -20,6 +20,7 @@ import {
   fallbackIdeas,
   fallbackStocks,
   fallbackTrends,
+  familyForSignalType,
   findSeedProduct,
   isRegion,
   normalizeCommunitySummary,
@@ -30,8 +31,10 @@ import {
   type BriefSnapshot,
   type BriefStockItem,
   type BriefTrendItem,
+  type HitRateBand,
   type Region,
   type SeedProduct,
+  type SignalFamily,
 } from "@high-signal/shared";
 import { db, schema } from "../db";
 
@@ -48,7 +51,13 @@ export const TRENDS_LIMIT = 8;
  */
 export const RECENT_SIGNAL_WINDOW_DAYS = 28;
 export const COMMUNITY_DIGEST_LOOKBACK_DAYS = 28;
+/**
+ * "Direct" hit-rate confidence requires ≥ 3 scored predictions on the exact
+ * signal_type. Below that, fall back to family or `early` so the moat stays
+ * visible instead of going silent on fresh signal types.
+ */
 export const HIT_RATE_SAMPLE_MIN = 3;
+export const HIT_RATE_FAMILY_MIN = 5;
 
 /** Pure ranking helper — tested directly. */
 export interface RankableRow {
@@ -79,6 +88,49 @@ export function computeHitRate(outcomes: { hit: number; miss: number; push: numb
     return { hitRate: null, sample: decided };
   }
   return { hitRate: outcomes.hit / decided, sample: decided };
+}
+
+export interface BucketCounts {
+  hit: number;
+  miss: number;
+  push: number;
+}
+
+/**
+ * Three-tier hit-rate resolution. Tries the exact signal_type first; if not
+ * enough sample, falls back to the family aggregate; if family is also too
+ * thin but has any scored decision, surfaces it as "early"; otherwise null.
+ */
+export function resolveHitRate(
+  signalType: string,
+  byType: Map<string, BucketCounts>,
+  byFamily: Map<SignalFamily, BucketCounts>,
+): { hitRate: number | null; sample: number; band: HitRateBand } {
+  const direct = byType.get(signalType);
+  if (direct) {
+    const decided = direct.hit + direct.miss;
+    if (decided >= HIT_RATE_SAMPLE_MIN) {
+      return { hitRate: direct.hit / decided, sample: decided, band: "direct" };
+    }
+  }
+  const family = familyForSignalType(signalType);
+  const familyBucket = byFamily.get(family);
+  if (familyBucket) {
+    const decided = familyBucket.hit + familyBucket.miss;
+    if (decided >= HIT_RATE_FAMILY_MIN) {
+      return { hitRate: familyBucket.hit / decided, sample: decided, band: "family" };
+    }
+    if (decided >= 1) {
+      return { hitRate: familyBucket.hit / decided, sample: decided, band: "early" };
+    }
+  }
+  if (direct) {
+    const decided = direct.hit + direct.miss;
+    if (decided >= 1) {
+      return { hitRate: direct.hit / decided, sample: decided, band: "early" };
+    }
+  }
+  return { hitRate: null, sample: 0, band: "none" };
 }
 
 /** Extract a one-line headline from a signal's body markdown, falling back to entity name. */
@@ -261,9 +313,11 @@ async function buildStocks(
     .orderBy(desc(schema.signals.publishedAt))
     .limit(STOCKS_LIMIT * 4); // overfetch so the post-filter can rank by direction
 
-  // Pull hit-rate stats for the signal types we just selected.
+  // Pull hit-rate stats — both per-type and per-family — so the renderer can
+  // fall back gracefully when a fresh signal type has no scored predictions.
   const signalTypes = Array.from(new Set(rows.map((r) => r.signalType)));
-  const hitRateBySignalType = await loadHitRateBySignalType(database, signalTypes);
+  const { byType: hitRateBySignalType, byFamily: hitRateByFamily } =
+    await loadHitRateStats(database, signalTypes);
 
   // Prefer up/down over neutral and high-confidence first within a type.
   const ranked = rankStocks(
@@ -277,15 +331,14 @@ async function buildStocks(
   return ranked.map((row): BriefStockItem => {
     const headline = headlineFromBody(row.bodyMd, row.entityName);
     const evidenceArr = Array.isArray(row.evidenceList) ? row.evidenceList : [];
-    const stats = hitRateBySignalType.get(row.signalType);
-    const hitRateRendered =
-      stats && stats.sample >= HIT_RATE_SAMPLE_MIN ? stats.hitRate : null;
+    const resolved = resolveHitRate(row.signalType, hitRateBySignalType, hitRateByFamily);
     return {
       entityId: row.entityId,
       entityName: row.entityName,
       ticker: row.ticker,
       country: row.country,
       signalType: row.signalType,
+      signalFamily: familyForSignalType(row.signalType),
       direction: row.direction as "up" | "down" | "neutral",
       confidence: row.confidence as "low" | "medium" | "high",
       predictedWindowDays: row.predictedWindowDays,
@@ -295,18 +348,23 @@ async function buildStocks(
         ? row.publishedAt.toISOString()
         : new Date(Number(row.publishedAt)).toISOString(),
       evidenceUrls: evidenceArr.map((url) => ({ url: String(url) })),
-      hitRate: hitRateRendered,
-      hitRateSample: stats?.sample ?? 0,
+      hitRate: resolved.hitRate,
+      hitRateSample: resolved.sample,
+      hitRateBand: resolved.band,
     };
   });
 }
 
-async function loadHitRateBySignalType(
+async function loadHitRateStats(
   database: ReturnType<typeof db>,
-  signalTypes: string[],
-): Promise<Map<string, { hitRate: number; sample: number }>> {
-  const map = new Map<string, { hitRate: number; sample: number }>();
-  if (!signalTypes.length) return map;
+  signalTypesNeeded: string[],
+): Promise<{
+  byType: Map<string, BucketCounts>;
+  byFamily: Map<SignalFamily, BucketCounts>;
+}> {
+  // Load the FULL scored ledger (not just the signal types in this render).
+  // Family rollup needs to see siblings, not just the requested types. The
+  // ledger is small (low thousands at most), so the wide scan is fine.
   const rows = await database
     .select({
       signalType: schema.signals.signalType,
@@ -315,23 +373,32 @@ async function loadHitRateBySignalType(
     })
     .from(schema.scoreRuns)
     .innerJoin(schema.signals, eq(schema.signals.id, schema.scoreRuns.signalId))
-    .where(inArray(schema.signals.signalType, signalTypes))
     .groupBy(schema.signals.signalType, schema.scoreRuns.outcome);
-  const buckets = new Map<string, { hit: number; miss: number; push: number }>();
+
+  const byType = new Map<string, BucketCounts>();
   for (const r of rows) {
-    const bucket = buckets.get(r.signalType) ?? { hit: 0, miss: 0, push: 0 };
+    const bucket = byType.get(r.signalType) ?? { hit: 0, miss: 0, push: 0 };
     if (r.outcome === "hit") bucket.hit += Number(r.count);
     else if (r.outcome === "miss") bucket.miss += Number(r.count);
     else if (r.outcome === "push") bucket.push += Number(r.count);
-    buckets.set(r.signalType, bucket);
+    byType.set(r.signalType, bucket);
   }
-  for (const [signalType, b] of buckets) {
-    const { hitRate, sample } = computeHitRate(b);
-    // computeHitRate returns null when below the sample threshold; cache the
-    // sample so the caller can still display "M scored calls" honestly.
-    map.set(signalType, { hitRate: hitRate ?? 0, sample });
+
+  const byFamily = new Map<SignalFamily, BucketCounts>();
+  for (const [signalType, bucket] of byType) {
+    const family = familyForSignalType(signalType);
+    const acc = byFamily.get(family) ?? { hit: 0, miss: 0, push: 0 };
+    acc.hit += bucket.hit;
+    acc.miss += bucket.miss;
+    acc.push += bucket.push;
+    byFamily.set(family, acc);
   }
-  return map;
+
+  // signalTypesNeeded is currently unused but kept on the signature so we
+  // can switch to a narrowed scan if the ledger grows huge.
+  void signalTypesNeeded;
+
+  return { byType, byFamily };
 }
 
 async function buildIdeas(
