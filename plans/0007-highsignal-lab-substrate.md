@@ -128,3 +128,44 @@ Rejected and deferred items from the same review (X-only sourcing, engagement-as
 - A ranked top-50 feed exists, scored by the 3 factors.
 - Summaries run on local Qwen and entities on GLiNER, with no paid AI in the default path.
 - The operator chooses to open the feed daily — the only success metric that counts.
+
+## Status — 2026-05-25
+
+**Shipped (Phase 1 partial)** — code in `python/lab/` and `apps/web/src/app/lab/`:
+
+- Postgres + pgvector + pg_trgm via `python/lab/docker-compose.yml`.
+- Schema (`python/lab/schema.sql`): `documents`, `repos`, `hn_threads`, `entities`, `document_entities`, `links`, `ingest_runs`. FTS via generated `tsv` column. `documents.cluster_id` for story grouping. `pgvector` columns on both `documents` and `repos`; HNSW indexes created by `embed.py` on first run.
+- HN ingest (`high_signal_lab.ingest`) — top-N stories + the submitted URL + outbound link extraction (lxml + social/nav noise filter), records `links` rows with `link_type='mentions'`; idempotent upsert.
+- One-hop materialization (`high_signal_lab.materialize`) — fetches `links` rows where `to_document_id IS NULL`, extracts text via Trafilatura, upserts as documents (`source='one-hop'`), patches `links.to_document_id`. Bounded by `--limit`.
+- GitHub trending ingest (`high_signal_lab.github_trending`) — HTML scrape of `github.com/trending` across default + python/rust/typescript/go × daily/weekly/monthly into `repos`. No API key required.
+- 4-factor scorer (`high_signal_lab.score`) — HN discussion (tanh) + recency (exp decay, 2.5d half-life) + **velocity** (distinct upstream documents linking in over the last 48h, tanh) + **GitHub momentum** (parses `github.com/owner/repo` out of `documents.url`, joins `repos.stars`, tanh). Weights 0.40 / 0.25 / 0.20 / 0.15. Stores per-factor breakdown plus `recent_inbound` count and `github_repo` / `github_stars` in `score_factors`.
+- Story clustering (`high_signal_lab.cluster`) — union-find over (a) shared link targets and (b) embedding cosine ≥ 0.85; smallest member id becomes `cluster_id` for the component; idempotent.
+- Embeddings (`high_signal_lab.embed`) — optional `[embeddings]` extra; local `sentence-transformers/all-MiniLM-L6-v2` (384-dim, matches schema); creates `hnsw vector_cosine_ops` indexes on both `documents.embedding` and `repos.embedding` after first run.
+- Entity extraction (`high_signal_lab.extract_entities`) — optional `[entities]` extra; GLiNER (same model `python/ingest` uses) over `documents.extracted_text`; six labels (company, product, person, technology, research lab, open source project) mapped to `entities.type`; upserts `entities` + `document_entities` rows; idempotent (skips documents already linked).
+- Summarization (`high_signal_lab.summarize`) — talks to any OpenAI-compatible `/chat/completions` endpoint via `HIGH_SIGNAL_LAB_AI_BASE_URL` + `HIGH_SIGNAL_LAB_AI_MODEL` (defaults to Ollama `qwen2.5:7b` at `localhost:11434/v1`); populates `documents.summary` (3–5 sentences) and `documents.short_summary` (≤ 280 chars); strict JSON output prompt; reachability probe skips cleanly when the endpoint is down.
+- FastAPI server (`high_signal_lab.server`) — `/feed` (FTS via `websearch_to_tsquery` or score-ranked; `by_cluster=true` collapses to one representative per cluster), `/search` (pgvector cosine over embeddings), `/stats`, `/healthz`. CORS open for local dev.
+- Web `/lab` page — searches via `LAB_API_URL` with optional cluster-collapse toggle; renders cluster id in each row's kicker. Falls back to a "not provisioned" panel when `LAB_API_URL` is unset.
+
+**Not yet shipped from this plan** — explicit remaining acceptance gaps:
+
+- 14k-repo GitHub DB import into `repos` (currently only daily/weekly/monthly trending HTML scrape).
+- GitHub API enrichment (last commit, topics, accurate stars/forks) for `repos` — currently scrape-only.
+- Referenced papers / blogs ingest beyond the one-hop pass (e.g., resolving arXiv abstracts and engineering blogs by domain heuristics).
+- Entity-momentum overlay on the web `/entities` view (Digg follow-on; deferred until populated via `extract_entities`).
+- Repo embeddings populated end-to-end (the embedder supports it, but no scheduled trigger yet).
+
+**Operator notes** — Phase 1 is dormant until you bring it up. Bring-up order (each step idempotent):
+
+1. `docker compose -f python/lab/docker-compose.yml up -d`
+2. `uv sync` (+ `--extra embeddings`, `--extra entities` as needed)
+3. `lab-ingest` → HN top-N + page extraction + outbound links
+4. `lab-materialize` → fetch the linked pages from step 3
+5. `lab-github-trending` → repos table
+6. `lab-embed` *(optional, slow on first run; needs `--extra embeddings`)*
+7. `lab-entities` *(optional, needs `--extra entities`)*
+8. `lab-summarize` *(optional, needs `HIGH_SIGNAL_LAB_AI_BASE_URL` pointing at Ollama / vLLM / any OpenAI-compatible endpoint)*
+9. `lab-cluster`
+10. `lab-score`
+11. `lab-server`
+
+Steps 6, 7, 8 are optional — Phase 1 is useful with just FTS + 4-factor scoring + clustering, and degrades gracefully when the optional stages are skipped.

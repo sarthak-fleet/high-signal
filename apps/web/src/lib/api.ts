@@ -3,8 +3,15 @@ import type {
   AgentEvaluationAudit,
   AgentEvaluationAuditDetail,
   AgentEvaluationCompetitor,
+  AIPlatform,
+  BriefSnapshot,
   CommunityDigestSnapshot,
+  MentionBrandConfig,
+  MentionCheck,
+  MentionPrompt,
   ProductDashboardSnapshot,
+  Region,
+  TrackedCommunity,
 } from "@high-signal/shared";
 import type { SignalContentCategory, SignalQualityBand, SourceClass } from "@high-signal/shared";
 
@@ -12,8 +19,15 @@ export type {
   AgentEvaluationAudit,
   AgentEvaluationAuditDetail,
   AgentEvaluationCompetitor,
+  AIPlatform,
+  BriefSnapshot,
   CommunityDigestSnapshot,
+  MentionBrandConfig,
+  MentionCheck,
+  MentionPrompt,
   ProductDashboardSnapshot,
+  Region,
+  TrackedCommunity,
 } from "@high-signal/shared";
 
 const API_BASE =
@@ -318,4 +332,145 @@ export const api = {
     fetchJson<AgentEvaluationAuditDetail>(
       `/products/agent-eval/audits/${encodeURIComponent(id)}?${new URLSearchParams({ owner: ownerId })}`,
     ),
+  trackedCommunities: (ownerId: string) =>
+    fetchJson<{ communities: TrackedCommunity[] }>(
+      `/products/communities/tracked?${new URLSearchParams({ owner: ownerId })}`,
+    ),
+  createTrackedCommunity: (
+    ownerId: string,
+    input: { subreddit: string; prompt?: string | null; period?: "day" | "week" | "month"; isPublic?: boolean },
+  ) =>
+    fetchJson<{ community: TrackedCommunity }>(
+      `/products/communities/tracked?${new URLSearchParams({ owner: ownerId })}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+      },
+    ),
+  deleteTrackedCommunity: (ownerId: string, id: string) =>
+    fetchJson<{ ok: true }>(
+      `/products/communities/tracked/${encodeURIComponent(id)}?${new URLSearchParams({ owner: ownerId })}`,
+      { method: "DELETE" },
+    ),
+  generateCommunityDigest: (ownerId: string, id: string) =>
+    fetchJson<{ digest: CommunityDigestSnapshot }>(
+      `/products/communities/tracked/${encodeURIComponent(id)}/digests?${new URLSearchParams({ owner: ownerId })}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "{}",
+      },
+    ),
+  mentionConfigs: (ownerId: string) =>
+    fetchJson<{ configs: MentionBrandConfig[] }>(
+      `/products/mentions/configs?${new URLSearchParams({ owner: ownerId })}`,
+    ),
+  createMentionConfig: (
+    ownerId: string,
+    input: {
+      brandName: string;
+      brandAliases?: string[];
+      brandUrl?: string | null;
+      competitors?: Array<{ name: string; url?: string }>;
+      platforms?: AIPlatform[];
+      aiEndpointUrl?: string | null;
+      aiModel?: string | null;
+      checkSchedule?: "daily" | "weekly" | null;
+      badgeEnabled?: boolean;
+    },
+  ) =>
+    fetchJson<{ config: MentionBrandConfig }>(
+      `/products/mentions/configs?${new URLSearchParams({ owner: ownerId })}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+      },
+    ),
+  deleteMentionConfig: (ownerId: string, id: string) =>
+    fetchJson<{ ok: true }>(
+      `/products/mentions/configs/${encodeURIComponent(id)}?${new URLSearchParams({ owner: ownerId })}`,
+      { method: "DELETE" },
+    ),
+  mentionConfigPrompts: (ownerId: string, configId: string) =>
+    fetchJson<{ prompts: MentionPrompt[] }>(
+      `/products/mentions/configs/${encodeURIComponent(configId)}/prompts?${new URLSearchParams({ owner: ownerId })}`,
+    ),
+  createMentionPrompt: (
+    ownerId: string,
+    configId: string,
+    input: { promptText: string; category?: string | null },
+  ) =>
+    fetchJson<{ prompt: MentionPrompt }>(
+      `/products/mentions/configs/${encodeURIComponent(configId)}/prompts?${new URLSearchParams({ owner: ownerId })}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+      },
+    ),
+  mentionConfigChecks: (ownerId: string, configId: string) =>
+    fetchJson<{ checks: MentionCheck[] }>(
+      `/products/mentions/configs/${encodeURIComponent(configId)}/checks?${new URLSearchParams({ owner: ownerId })}`,
+    ),
+  runMentionCheck: (ownerId: string, configId: string) =>
+    fetchJson<{ check: MentionCheck }>(
+      `/products/mentions/configs/${encodeURIComponent(configId)}/checks?${new URLSearchParams({ owner: ownerId })}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "{}",
+      },
+    ),
+  brief: (
+    params: { region?: Region; ownerId?: string; productId?: string } = {},
+  ) => {
+    const search = new URLSearchParams();
+    if (params.region) search.set("region", params.region);
+    if (params.ownerId) search.set("owner", params.ownerId);
+    if (params.productId) search.set("product", params.productId);
+    const suffix = search.toString();
+    return fetchJson<BriefSnapshot>(`/brief/daily${suffix ? `?${suffix}` : ""}`);
+  },
+  labFeed: async (
+    params: { query?: string; source?: string; limit?: number; byCluster?: boolean } = {},
+  ) => {
+    const base = process.env["LAB_API_URL"] ?? process.env["NEXT_PUBLIC_LAB_API_URL"];
+    if (!base) throw new Error("lab_not_configured");
+    const search = new URLSearchParams();
+    if (params.query) search.set("q", params.query);
+    if (params.source) search.set("source", params.source);
+    if (params.limit) search.set("limit", String(params.limit));
+    if (params.byCluster) search.set("by_cluster", "true");
+    const suffix = search.toString();
+    const r = await fetch(`${base.replace(/\/$/, "")}/feed${suffix ? `?${suffix}` : ""}`, {
+      cache: "no-store",
+    });
+    if (!r.ok) throw new Error(`lab ${r.status}`);
+    return (await r.json()) as LabFeedResult;
+  },
 };
+
+export interface LabFeedItem {
+  id: string;
+  source: string;
+  title: string;
+  url: string;
+  summary: string | null;
+  publishedAt: string | null;
+  score: number;
+  clusterId?: string | null;
+}
+
+export interface LabFeedStats {
+  documents: number;
+  sources: number;
+  embeddings: number;
+  lastIngestAt: string | null;
+}
+
+export interface LabFeedResult {
+  items: LabFeedItem[];
+  stats: LabFeedStats;
+}

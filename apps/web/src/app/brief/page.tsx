@@ -1,7 +1,5 @@
 import { BriefSections } from "@/components/brief/BriefSections";
 import { ProductPicker } from "@/components/brief/ProductPicker";
-// Auth + ownerId checks intentionally still imported below — the brief route
-// still prefers real D1 brand data when an authenticated owner has any.
 import { RegionPicker } from "@/components/brief/RegionPicker";
 import { HeroHeader, PageShell } from "@/components/system/HighSignalUI";
 import { api, type BriefSnapshot } from "@/lib/api";
@@ -9,6 +7,7 @@ import { getRequestAuth } from "@/lib/require-auth";
 import { findSeedProduct, isRegion, regionLabel, type Region } from "@high-signal/shared";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Daily Brief — High Signal" };
 
 const EMPTY_BRIEF: BriefSnapshot = {
   generatedAt: new Date().toISOString(),
@@ -21,7 +20,7 @@ const EMPTY_BRIEF: BriefSnapshot = {
   improvements: [],
 };
 
-export default async function HomePage({
+export default async function BriefPage({
   searchParams,
 }: {
   searchParams?: Promise<{ region?: string; product?: string }>;
@@ -48,26 +47,16 @@ export default async function HomePage({
     // worker offline or D1 empty — render the empty brief.
   }
 
-  const spotlightName = brief.perception[0]?.brandName ?? null;
-  const heroEyebrow = selectedProduct
-    ? `daily brief / ${regionLabel(region).toLowerCase()} / ${selectedProduct.brandName.toLowerCase()}`
-    : `daily brief / ${regionLabel(region).toLowerCase()}`;
-
   return (
     <PageShell>
-      <HeroHeader eyebrow={heroEyebrow} title="What changed today">
-        High Signal aggregates technology, startup, and finance sources, curates them, and
-        synthesizes the day into five sections. Pick any product and any region to see how the
-        brief recomposes. Every claim cites at least one source.
-        {selectedProduct ? null : spotlightName ? (
-          <>
-            {" "}
-            <span className="text-[var(--color-muted)]">
-              Personal sections currently spotlighting <em>{spotlightName}</em> — switch via the
-              product picker.
-            </span>
-          </>
-        ) : null}
+      <HeroHeader
+        eyebrow={`daily brief / ${regionLabel(region).toLowerCase()}${
+          selectedProduct ? ` / ${selectedProduct.brandName.toLowerCase()}` : ""
+        }`}
+        title="What changed today"
+      >
+        Synthesized from the lenses below. Five sections — three on the world, two on whichever
+        product you've picked. Every claim cites at least one source.
       </HeroHeader>
 
       <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-y border-[var(--color-line)] py-3">

@@ -1,15 +1,18 @@
 # High Signal
 
-High Signal extracts actionable signals from noisy public and semi-public information streams, then explains why they matter and what should happen next.
+High Signal is **one product**: a synthesized **Daily Brief** assembled from many noisy public sources. It covers three knowledge domains — **technology, startups, finance** — globally by default and filtered to any region a user picks.
 
-The product now has four intended sub-products:
+The brief has five sections. The first three are public; the last two appear once the user connects a brand.
 
-- **Mention Intelligence** — company, brand, competitor, and AI-visibility signals. Migration source: `/Users/sarthakagrawal/Desktop/Fleet/mentionpilot`.
-- **Community Intelligence** — subreddit/community demand, pain, smaller app requirements, repeated complaints, narrative, and trend signals. Migration source: `/Users/sarthakagrawal/Desktop/Fleet/agentMode`.
-- **Market Intelligence** — high-level national and international stock, company, sector, and market signals with entity graphs and hit-rate tracking. This repo's current AI-infra / semiconductors artifact becomes the first market collection.
-- **Agent Evaluation Intelligence** — audits whether a brand, product, or offer is legible, credible, and recommendable to AI assistants and buyer agents; pairs the evidence layer with short-form reel briefs that win the first human attention slice.
+1. **Stocks watching for a boom** — hit-rate inline on every claim.
+2. **Business ideas to build** — surfaced from community demand.
+3. **New lifestyle trends** — community + cultural drift.
+4. **How the market perceives your products** — mention intelligence.
+5. **Ideas to improve your products** — agent-readiness gaps.
 
-Active consolidation plan: `plans/0004-platform-consolidation.md`.
+Everything else in the repo (Markets, Communities, Mentions, Agent Eval, Lab) is a **lens** — an intelligence helper that feeds the brief. They remain explorable as deep views but are no longer the product's headline.
+
+Pricing: free. No paid tier, no billing. Region is a free filter.
 
 ## What it does today
 - Ingests SEC filings, IR pages, AI-infra news/blogs, Reddit, GitHub, government feeds, YouTube transcripts, HKEX announcements, GDELT, and prediction markets
@@ -27,8 +30,16 @@ Active consolidation plan: `plans/0004-platform-consolidation.md`.
 - Existing incumbents (AlphaSense, Brightwave, Daloopa) own enterprise research workflows; nobody ships a directed spillover graph + public hit-rate
 - Source layer is fully covered by OSS — no licensed feeds required for v0
 
-## Status
-Scaffolded as the Market Intelligence artifact. Worker API + Next.js web + Python ingest + 274 entities + 175 relationships + 31 signal types + 168 sources all committed. Awaiting consolidation work for Mention Intelligence, Community Intelligence, and Agent Evaluation Intelligence.
+## Status (2026-05-25)
+
+- **Daily Brief** — primary surface at `/` and `/brief`. Worker route `/brief/daily?region=&owner=` composes the five sections from the lenses below. Region filter free for everyone; default global.
+- **Markets lens** — functional. Ingest + signal log + review queue + public hit-rate ledger at `/track-record`. Feeds brief section 1 with inline hit-rate per signal type.
+- **Communities lens** — functional. Tracked-subreddit CRUD, periodic digest generation (LLM summary when `HIGH_SIGNAL_AI_API_KEY` is set, deterministic fallback otherwise). Feeds brief sections 2 and 3.
+- **Mentions lens** — UI + worker wired at `/mentions`. Real LLM checks fail-closed without `HIGH_SIGNAL_AI_API_KEY`; the local preview analyzer panel works regardless. Feeds brief section 4 (per connected brand).
+- **Agent Eval lens** — deterministic 8-area evidence scorer + reel briefs at `/agent-eval`. Real-AI prompt execution overlays when the same key is set. Feeds brief section 5 (per connected brand).
+- **Lab substrate** (plan `0007`) — Phase 1 expanded: docker-compose Postgres+pgvector, schema, HN ingest with outbound-link extraction, one-hop materialization, GitHub trending scraper, 4-factor scorer (HN + recency + velocity + GitHub-momentum placeholder), union-find story clustering, local sentence-transformer embeddings + semantic search, GLiNER entity extraction, local-LLM summarization (Ollama / vLLM), FastAPI feed at `/lab` with cluster-collapse toggle. Still pending from plan 0007: 14k-repo DB import, GitHub API enrichment for repos, GitHub-momentum factor in scorer.
+
+For day-to-day stack and conventions, read `agents.md` (canonical).
 
 ## Will discuss: Signal Studio and playgrounds
 **Signal Studio** is the recommended first playground: a visual content lab that turns High Signal findings into polished marketing assets. It should feel like a futuristic marketing command center, not a boring dashboard. It can be playground-quality visually while still producing assets useful for selling High Signal.
@@ -74,12 +85,15 @@ Worth playgrounding as marketing tools:
 
 ## Architecture
 ```
-apps/web              Next.js 16 + Tailwind v4 — futurist + clean UI
+apps/web              Next.js 16 + Tailwind v4 — futurist + clean UI, Clerk auth
 workers/api           Hono on Cloudflare Workers + D1 binding + cron
-packages/db           Drizzle schema + migrations (sqlite/D1)
-packages/shared       Cross-package types
+packages/db           Drizzle schema + migrations (sqlite/D1) — signals, mentions,
+                      communities, agent-eval, market quotes
+packages/shared       Cross-package types + deterministic Agent-Eval scorer
 python/ingest         uv-managed: edgartools, Trafilatura, GLiNER, FinBERT, yfinance
   └ GitHub Actions runs daily ingest, markets polling, and scoring
+python/lab            Local-first Postgres substrate (plan 0007): pgvector,
+                      HN ingest, GitHub trending, scorer, FastAPI feed
 signals/              Git-versioned, append-only signal markdown
 scripts/              CSV→D1 + signals.md→D1 sync
 ```
@@ -121,6 +135,23 @@ cd python/ingest && uv run python -m high_signal_ingest.pipeline --source news -
 #   - flip review_status: published
 #   - git commit
 pnpm signals:sync:local
+
+# 8. Optional: bring up the Lab substrate (plan 0007)
+docker compose -f python/lab/docker-compose.yml up -d
+cd python/lab && uv sync
+uv run python -m high_signal_lab.ingest --limit 30           # HN + page text + outbound links
+uv run python -m high_signal_lab.materialize --limit 50      # fetch one-hop linked pages
+uv run python -m high_signal_lab.github_trending             # github.com/trending into repos
+# Optional enrichment passes (each downloads its own model on first run):
+uv sync --extra embeddings && uv run python -m high_signal_lab.embed
+uv sync --extra entities && uv run python -m high_signal_lab.extract_entities
+# Optional: point at any OpenAI-compatible endpoint (Ollama localhost:11434/v1 default):
+uv run python -m high_signal_lab.summarize
+uv run python -m high_signal_lab.cluster                     # story grouping (union-find)
+uv run python -m high_signal_lab.score                       # 4-factor scoring
+uv run python -m high_signal_lab.server                      # http://localhost:8765
+# Then in the web app shell:
+export LAB_API_URL=http://localhost:8765 && pnpm dev
 ```
 
 ## Quick links
@@ -128,6 +159,9 @@ pnpm signals:sync:local
 - Commercial handoff: `docs/high-signal-handoff.md`
 - Consolidation plan: `plans/0004-platform-consolidation.md`
 - Plan: `plans/0001-research-artifact-first.md`
+- Agent Evaluation plan: `plans/0006-agent-evaluation-attention-layer.md`
+- Lab substrate plan: `plans/0007-highsignal-lab-substrate.md`
+- Lab bring-up: `python/lab/README.md`
 - Product opportunity radar: `/opportunities`
 - Personal command brief: `/personal`
 - Research: `research/market-and-oss.md`

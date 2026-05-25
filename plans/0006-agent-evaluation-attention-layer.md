@@ -131,3 +131,22 @@ Use a single-product workflow before broadening:
 - Every score has a cited source or a missing-evidence label.
 - The reel briefs only use verified claims from the audit.
 - The workflow creates concrete fixes before creating more content.
+
+## Status — 2026-05-25
+
+**Shipped**:
+
+- D1 schema (`packages/db/migrations/0004_agent_evaluation.sql`): `agent_evaluation_audits`, `agent_evaluation_responses`, `agent_evidence_scores`, `agent_evidence_tasks`, `reel_briefs`.
+- Shared scorer (`packages/shared/src/agent-evaluation.ts`) — 8 evidence areas (positioning, pricing, proof, comparisons, docs, policies, reviews, transaction readiness) scored against the supplied evidence corpus via regex patterns; produces 7 prompt-matrix templates, missing-evidence tasks, and reel briefs.
+- Worker route (`workers/api/src/routes/products.ts` → `/products/agent-eval/audits`) — POST runs the audit and persists every layer; GET lists / fetches detail.
+- Web `/agent-eval` — full server-action form (brand, mission, segment, competitors, evidence text + URLs); renders overall score, per-area evidence cards, missing-evidence task feed, prompt-matrix feed, and reel-brief detail.
+- Real-AI prompt execution (`workers/api/src/lib/agent-evaluation-execution.ts`) — when `HIGH_SIGNAL_AI_API_KEY` (or `OPENAI_API_KEY`) is set on the worker, every prompt template fires against a real LLM and the response is re-analyzed for brandMentioned / brandRecommended / competitorsMentioned / citations. Without a key, falls back to deterministic synthesized responses.
+
+**Not yet shipped from this plan**:
+
+- Per-platform fan-out (Claude / ChatGPT / Perplexity / Gemini as distinct surfaces with separate provider creds). Current execution uses one OpenAI-compatible endpoint and tags everything `platform: 'custom'`.
+- Buyer-journey simulation beyond the fixed 7-prompt template set.
+- Per-claim provenance ledger that ties each reel-brief proof point to a citable source URL with retrieval timestamp.
+- Founder-POV / content-example ingestion (an input mentioned in the Product Contract).
+- Competitor comparison map as a structured output (currently flattened into prompt-matrix and reel-brief copy).
+- Stale-evidence detection (re-scoring an audit when the brand's evidence text / URLs change).

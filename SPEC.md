@@ -1,8 +1,10 @@
 # High Signal
 
-Research brief updated: 2026-05-01
+Research brief updated: 2026-05-25
 
-Current top-level direction: High Signal is the umbrella product for signal extraction. The prior AI-infra / semiconductors wedge remains the first **Market Intelligence** collection, not the whole product. See `plans/0004-platform-consolidation.md`.
+**Current product direction (canonical, supersedes earlier framing):** High Signal is **one** product — a Daily Brief synthesized from many noisy sources, covering three domains (technology, startups, finance). The brief has five sections (three public, two personal that require a connected brand). Region is a free filter. The earlier "umbrella + 5 sub-products" framing in `plans/0004-platform-consolidation.md` is superseded; Markets / Communities / Mentions / Agent Eval / Lab are now **lenses** that feed the brief, not destinations.
+
+See `agents.md` "Locked decisions" for the authoritative product-direction snapshot. The thesis below is unchanged.
 
 Signal intelligence for companies and sectors, driven by news, filings, docs, related-entity shifts, AI-assistant answers, and public evidence surfaces.
 

@@ -1,5 +1,3 @@
-import { notFound, redirect } from "next/navigation";
-import type { Route } from "next";
 import { requireAdmin } from "@/lib/clerk-admin";
 import { api, type TrackBucket } from "@/lib/api";
 
@@ -35,10 +33,7 @@ function formatHitRate(value: number | null) {
 
 export default async function TrackRecordPage() {
   const admin = await requireAdmin();
-  if (!admin.ok) {
-    if (admin.status === 401) redirect("/sign-in" as Route);
-    notFound();
-  }
+  const isAdmin = admin.ok;
 
   let cohorts: Cohorts = { live: [], backfill: [], all: [] };
   try {
@@ -57,12 +52,12 @@ export default async function TrackRecordPage() {
       </a>
       <header className="mt-3 border-b border-zinc-800 pb-6">
         <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--color-accent)]">
-          private / {admin.identity.email}
+          public hit-rate ledger
         </div>
         <h1 className="mt-3 text-3xl font-medium tracking-tight">Track record</h1>
         <p className="mt-2 max-w-2xl text-sm text-zinc-400">
-          This is the internal quality ledger for market signals. Read Live first; use Backfill only
-          to calibrate the scoring system.
+          Every published market signal scored against subsequent market moves. Read Live first; use
+          Backfill only to calibrate the scoring system.
           <br />
           <span className="text-zinc-500">
             Hit-rate excludes pushes. Push means the market move was too small or inconclusive.
@@ -93,21 +88,24 @@ export default async function TrackRecordPage() {
         />
       </section>
 
-      <section className="mt-12">
-        <div className="flex items-baseline justify-between border-b border-zinc-800 pb-3">
-          <h2 className="font-mono text-[10px] uppercase tracking-[0.2em] text-zinc-500">
-            raw combined ledger
-          </h2>
-          <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-600">
-            debugging view
-          </span>
-        </div>
-        <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-500">
-          This table mixes live and replayed rows. It is useful for finding broken signal types, but
-          it should not be shown as the product's public accuracy until the live cohort is larger.
-        </p>
-        <BucketTable buckets={cohorts.all} emptyHint="no scored signals yet" />
-      </section>
+      {isAdmin ? (
+        <section className="mt-12">
+          <div className="flex items-baseline justify-between border-b border-zinc-800 pb-3">
+            <h2 className="font-mono text-[10px] uppercase tracking-[0.2em] text-zinc-500">
+              raw combined ledger (admin only)
+            </h2>
+            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-600">
+              debugging view
+            </span>
+          </div>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-500">
+            This table mixes live and replayed rows. It is useful for finding broken signal types,
+            but it should not be shown as the product's public accuracy until the live cohort is
+            larger.
+          </p>
+          <BucketTable buckets={cohorts.all} emptyHint="no scored signals yet" />
+        </section>
+      ) : null}
     </main>
   );
 }

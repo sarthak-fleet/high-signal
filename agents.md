@@ -5,25 +5,46 @@
 Also read and follow the shared fleet-level agent standard at `../AGENTS.md`. Treat this repository as owned product code: protect production stability, keep changes scoped, verify work, and record durable follow-up tasks when something remains incomplete or blocked.
 
 ## Purpose
-**High Signal is the umbrella product for extracting actionable signals from noisy public and semi-public information streams.** The current AI-infra / semiconductors signal log remains the first Market Intelligence collection, but it is no longer the whole product direction.
+**High Signal is one product: a daily synthesized brief.** It aggregates noisy public sources (Reddit, news, Hacker News, YouTube transcripts, SEC filings, GitHub, IR pages, etc.), curates and cleans them, and emits an end-of-day message answering five questions for the operator. Everything else in this repo — Markets, Communities, Mentions, Agent Eval, Lab — is an **intelligence helper** feeding that brief, not a standalone product.
 
-Full product brief: `SPEC.md`. Active top-level build plan: `plans/0004-platform-consolidation.md`. Agent evaluation plan: `plans/0006-agent-evaluation-attention-layer.md`. Market artifact plan: `plans/0001-research-artifact-first.md`. Intelligence substrate plan: `plans/0007-highsignal-lab-substrate.md`.
+Full product brief: `SPEC.md`. Locked product direction below supersedes the prior "umbrella + 5 sub-products" framing in `plans/0004-platform-consolidation.md`.
 
-## Locked decisions
-- **Umbrella brand**: High Signal
-- **Sub-products**: Mention Intelligence, Community Intelligence, Market Intelligence, Agent Evaluation Intelligence
-- **Migration sources**: Mention Intelligence from `/Users/sarthakagrawal/Desktop/Fleet/mentionpilot`; Community Intelligence from `/Users/sarthakagrawal/Desktop/Fleet/agentMode`
-- **First Market Intelligence wedge**: AI infra / semiconductors
-- **Market scope**: high-level national and international stock/sector watch; no deep single-stock research until the signal pipeline is mature
-- **Product opportunity scope**: High Signal should proactively say what products need to be built because world-level changes, smaller app requirements, and common complaint clusters create new demand
-- **First Agent Evaluation wedge**: agent-readiness audits for startups/SaaS/products, paired with evidence-backed reel briefs that translate the audit into human attention hooks
-- **Market horizon**: weekly digest + on-event signal cards
-- **Market output channels**: public web page + RSS + Twitter thread per signal + weekly Substack digest
-- **Codename**: `high-signal` (rebrand TBD post-traction; collision with High Signal Labs / HQ)
-- **Intelligence substrate**: HighSignal Lab (plan `0007`) — a local-first single-Postgres ingestion + index layer over tech/startup primary sources — is the shared discovery substrate beneath every sub-product. The AI-infra signal log becomes a curated, evidence-first view on top of it; Lab does not replace the signal log, review queue, or hit-rate ledger.
+## Locked decisions (product direction, 2026-05-25)
+
+- **Brand**: High Signal.
+- **Core product**: one **Daily Brief** per user per day, generated end-of-day from the helpers below. The brief is the homepage for signed-in users.
+- **Knowledge domains** the brief covers — three, no more:
+  1. **Technology** — what's launching, breaking, gaining adoption, getting deprecated.
+  2. **Startups** — what's being built, funded, killed; demand signals from communities.
+  3. **Finance** — what's worth watching in markets, sector moves, macro shifts that affect the above.
+- **Pricing**: everything is free for now. No paid tier, no billing, no Clerk metadata gates. Region is a free filter, not a paywall. Revisit once usage proves a willingness-to-pay surface.
+- **Public default feed** (the homepage for any visitor, signed in or not) — **3 sections**:
+  1. **Stocks watching for a boom** — finance × technology overlap. Every claim shows the project's prior **hit-rate** on that signal type inline (the moat).
+  2. **Business ideas to build** — startups × community-demand signals.
+  3. **New lifestyle trends** — community + cultural shifts surfaced from forums and transcripts.
+- **Two more sections appear after a brand is connected**:
+  4. **How the market perceives your products** — mention intelligence over the connected brand.
+  5. **Ideas to improve your products** — agent-evaluation gaps for the connected brand.
+- **Region**: free filter on every section. Default = global. Users can switch to any region; brief recomputes scoped to that region's entities + sources. Preference persists via Clerk `publicMetadata.region` for signed-in users.
+- **Helpers / lenses (engine room, not destinations)**:
+  - **Markets lens** feeds section 1. The AI-infra / semiconductors signal pipeline + public hit-rate ledger remain the proof-of-quality.
+  - **Communities lens** feeds sections 2 and 3 — pain, demand, narrative, lifestyle drift.
+  - **Mentions lens** feeds section 4 — requires the user to connect a brand.
+  - **Agent Eval lens** feeds section 5 — requires the user to connect a brand.
+  - **Lab substrate** (plan `0007`) is the local-first ingestion + index layer underneath all of them.
+  - Surfaced under `/lenses/*` so the word "products" in the UI stays unambiguously about the user's brand, not about our intelligence surfaces.
+- **Sources**: infinite by design. Reddit, news, HN, YouTube transcripts, SEC filings, GitHub, IR pages, papers, government feeds, prediction markets. The job is **curation + cleaning + de-duplication**, not aggregation volume.
+- **Hard rules baked in** (carry forward from the prior frame):
+  - Cite or kill — every claim in the brief points at ≥ 2 sources.
+  - Memory is git-versioned markdown; corrections are new entries citing prior, never edits.
+  - Public hit-rate ledger from day 1 — the moat.
+  - Confidence as a band: low / medium / high, calibrated post-hoc.
+- **Codename**: `high-signal` (rebrand TBD post-traction).
 
 ## Considered and deferred
-- **Multi-collection engine for EverythingRated** (2026-04-26) — design archived at `plans/0003-multi-collection-for-everythingrated.md`. Not shipped; reopening trigger is in that file. Engine remains single-collection and AI-infra-only.
+- **Multi-collection engine for EverythingRated** (2026-04-26) — design archived at `plans/0003-multi-collection-for-everythingrated.md`. Not shipped; reopening trigger is in that file.
+- **Per-platform fan-out for Mentions/Agent-Eval** (Claude / ChatGPT / Perplexity / Gemini as distinct provider creds). Today both use one OpenAI-compatible endpoint and tag everything `platform: 'custom'`. Reopen if users demand per-platform breakdowns.
+- **Paid tiers / region gating** — explicitly out of scope (2026-05-25). Everything is free; region is a free filter. Revisit when usage proves willingness-to-pay.
 
 ## Consolidation rule
 Do not delete or archive `mentionpilot` or `agentMode` until the relevant features have been migrated into this repo and verified. Treat those repos as read-only migration sources. Do not copy entire directories wholesale; port the useful domain behavior into High Signal's app shell, schema, API, and ingest boundaries.
@@ -33,11 +54,11 @@ Do not delete or archive `mentionpilot` or `agentMode` until the relevant featur
 - **API**: Hono on Cloudflare Workers — `workers/api`
 - **DB**: Cloudflare D1 + Drizzle — schema in `packages/db`
 - **Lab substrate**: local-first Postgres (FTS + `pgvector`) for HighSignal Lab ingestion/index — separate from the D1 signal store — `python/lab` (plan `0007`)
-- **Python ingestion + scoring**: edgartools, Trafilatura, GLiNER, GLiREL, NetworkX, FinBERT, VectorBT — runs on Modal.com — `python/ingest`
+- **Python ingestion + scoring**: edgartools, Trafilatura, GLiNER, GLiREL, NetworkX, FinBERT, VectorBT — `python/ingest`. **Daily crons run on GitHub Actions** (`.github/workflows/cron-{ingest,markets,score}.yml`); Modal (`python/ingest/modal_app.py`) is kept only for ad-hoc backfills via `modal run`.
 - **Signal store**: git-versioned markdown under `signals/YYYY-MM-DD/<slug>.md` — append-only, never rewritten
-- **Auth**: Cloudflare Access (Google IdP via Zero Trust) — fronts `/review` and `/api/admin/*`. Server verifies the `Cf-Access-Jwt-Assertion` JWT against the team JWKS (`apps/web/src/lib/cf-access.ts`). No NextAuth, no `AUTH_SECRET`. Setup is dashboard-only; only env vars are `CF_ACCESS_AUD` + `CF_ACCESS_TEAM_DOMAIN`.
+- **Auth**: Clerk (Google + email) — `ClerkProvider` wraps the app shell; `AuthNav` renders sign-in / sign-up / user button. Server-side gates use `requireSignedIn()` (`apps/web/src/lib/require-auth.ts`) and `requireAdmin()` (`apps/web/src/lib/clerk-admin.ts`, allow-list via `ADMIN_ALLOWED_EMAILS`). Env vars: `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `ADMIN_ALLOWED_EMAILS`. The earlier Cloudflare Access plan was abandoned; do not reintroduce it without a migration plan.
 - **Testing**: Vitest (TS), pytest (Python), Playwright (e2e)
-- **Deploy**: Vercel (web) + Cloudflare Workers (API + cron) + Modal (ingest)
+- **Deploy**: Cloudflare Workers for both web (`high-signal-web` via OpenNext) and API (`high-signal-api`). Daily crons on GitHub Actions. Modal kept for ad-hoc backfills only. No Vercel.
 - **Package manager**: pnpm workspace + uv (Python)
 
 ## Planned repo structure
@@ -129,30 +150,75 @@ Reuse user's `@saas-maker/*` packages instead of rebuilding:
 
 ## Active context
 
-### Built (2026-04-25)
-- **Monorepo scaffolded** — pnpm workspace, web + api + db + shared, plus `python/ingest`
-- **Drizzle schema + 0000 migration** — entities, relationships, events, signals, evidence, score_runs
-- **Seed data** in `python/ingest/src/high_signal_ingest/seed/`:
-  - `ai_infra_entities.csv` — 274 entities across the full AI-infra stack
-  - `relationships.csv` — 175 curated supplier/customer/peer/partner edges with citations
-  - `signal_types.yaml` — 31 signal types with extraction patterns + windows + spillover hints
-  - `sources.yaml` — 168 sources (74 tier-1) across IR, news, blogs, SEC, Reddit, X, GitHub, conferences, gov
-- **Python ingest pipeline** — `sources/{edgar,news,reddit,ir}.py`, `extract/entities.py` (gazetteer + GLiNER), `score/{sentiment,backtest}.py`, `generator.py` (LLM signal drafter), `writer.py` (markdown to `signals/`), `pipeline.py` (orchestrator)
-- **Modal deploy** — `modal_app.py` with daily cron @ 06:00 UTC
-- **Worker API (Hono on CF Workers)** — routes: `/signals`, `/signals/:slug`, `/signals/by-entity/:id`, `/entities`, `/entities/:id`, `/track-record`, `/track-record/series`, `/digest/weekly`, `/digest/rss`; cron handler triggers Modal
-- **Web app (Next.js 16, Tailwind v4, futurist UI)** — pages: `/`, `/signals`, `/signals/[slug]`, `/entities`, `/entities/[id]`, `/track-record`, `/digest`, OG image route, 404
-- **Components** — `DirectionPill`, `ConfidenceBadge`, `SignalCard` atoms+molecules
-- **Scripts** — `scripts/seed-d1.ts` (CSV → D1), `scripts/sync-signals.ts` (markdown → D1)
+### Built (2026-04-25 → 2026-05-25)
 
-### Next concrete actions for user
-1. `pnpm install` at repo root
-2. `cd python/ingest && uv sync`
-3. `wrangler d1 create high-signal-db` → paste id into `workers/api/wrangler.toml`
-4. `pnpm db:migrate:local && pnpm db:seed:local`
-5. Set env: `AI_BASE_URL`, `AI_API_KEY`, `AI_MODEL`, `SEC_USER_AGENT` (Modal Secret named `high-signal`)
-6. `pnpm dev` — runs web + worker
-7. `cd python/ingest && uv run python -m high_signal_ingest.pipeline --source news --days 1` to draft first signals into `signals/draft/`
-8. Manual review: open drafts → flip frontmatter `review_status: published` → commit → `pnpm signals:sync:local`
+**Original scaffold (2026-04-25)**
+- **Monorepo** — pnpm workspace, web + api + db + shared, plus `python/ingest`.
+- **Drizzle schema + migrations 0000–0004** — entities, relationships, events, signals, evidence, score_runs, mention configs/prompts/checks/results, tracked communities + digests, agent evaluation audits/responses/scores/tasks/reel briefs, market quotes.
+- **Seed data** (`python/ingest/src/high_signal_ingest/seed/`) — 274 entities, 175 relationships, 31 signal types, 168 sources.
+- **Python ingest pipeline** (10 adapters: edgar / news / reddit / ir / github / gov / youtube / gdelt / hkex / markets) → markdown drafts → `signals/`.
+- **Modal deploy** with daily cron @ 06:00 UTC.
+- **Worker API (Hono / CF Workers)** — `signals`, `entities`, `track-record` (cohorts + workbench), `sectors`, `digest/{weekly,rss,atom}`, `communities/reddit/*`, `products/{dashboard,agent-eval,mentions,communities,badge}`, admin sync.
+- **Web app (Next.js 16, Tailwind v4)** — full IA across signals, entities, sectors, markets, track-record, daily, dashboard, opportunities, ideas, teardowns, watchlist, personal, digest, embed/.
+- **Auth via Clerk** — sign-in / sign-up modal, `AuthNav`, `requireSignedIn`, `requireAdmin` allow-list.
+
+**Daily Brief surface added (2026-05-25)**
+- **Direction reframe** — the product is now **one** Daily Brief, not five sub-products. The five sub-products were demoted to **lenses** that feed the brief.
+- **Public demo model (no signup required)** — Sarthak's 2026-05-25 directive: "30-40 products and 5-7 regions, we can just test those out." `packages/shared/src/seed-products.ts` ships 35 hand-crafted brands across tech / startups / finance. The brief always renders all 5 sections: personal sections (4+5) prefer real D1 owner data first, then an explicit `product=<id>` selection, then a rotating hourly spotlight from the seed pool. Anonymous and signed-in look identical until a real brand is connected.
+- **Seed-content fallback for public sections** — `packages/shared/src/seed-content.ts` ships 12 stock signals (with realistic hit-rate samples), 8 business ideas, and 7 lifestyle trends. The brief route uses them as fallback for sections 1+2+3 whenever the D1 query returns zero rows for the chosen region. Real data always wins when present. Result: a fresh deploy with an empty D1 still renders a meaningful brief — verified end-to-end via `wrangler dev` + curl on 2026-05-25.
+- **Fault-tolerant composition** — every section builder in `workers/api/src/routes/brief.ts` is wrapped in a `safe()` helper that catches `D1_ERROR: no such table` / connection / driver errors and degrades to seed fallback. The brief surface stays live even on a deploy where D1 hasn't been migrated yet.
+- **Shared contracts** — `packages/shared/src/{region,brief,seed-products}.ts` define `Region`, the country rollups, `BriefSnapshot`, `SeedProduct`, and the curated `DEMO_REGIONS` (7 surfaced in pickers).
+- **Worker route** — `workers/api/src/routes/brief.ts` exposes `GET /brief/daily?region=<r>&owner=<id>&product=<seedId>`. Pulls stocks from `signals` joined to `entities` (filtered by country rollup), inline hit-rate per signal type from `score_runs`. Pulls ideas + trends from `community_digest_snapshots` `key_action` / `key_trend`. Pulls perception from `mention_checks` + `mention_results`. Pulls improvements from open `agent_evidence_tasks`. **Window is 28 days** across all signal + digest queries — Sarthak's "sync at least 4 weeks of data everywhere."
+- **Web surface** — `/brief` page and `/` (homepage) render the brief via `BriefSections` + `RegionPicker` + `ProductPicker`. Picker changes recompose the brief via URL params, no JS reload needed.
+- **Primary nav reframe** — `apps/web/src/components/system/PrimaryNav.tsx` leads with **brief / track record**, then a `lenses:` label followed by markets / communities / mentions / agent eval / lab, with review pushed to the right.
+- **`/opportunities` and `/ideas`** — still accessible as deep views but no longer in primary nav. The brief's Ideas section links to `/opportunities` as a "deeper view".
+- **`/review/lab-candidates`** — closes the Lab → curation loop. Renders top-30 Lab docs by signal score; each row offers "draft signal" which downloads a pre-filled markdown template the operator drops into `signals/<date>/`.
+- **Communities** (`/communities`) — rewrote from sample-data shell to a real hub: tracked subreddits, latest digests, generate / untrack actions, public discover feed, ad-hoc lookup preview. Backend (`worker /products/communities/*`, `community-research.ts`) was already in place.
+- **Mentions** (`/mentions`) — rewrote from single-text analyzer to brand configs CRUD + platform multi-select + prompts list + run check + recent check history. Local NLP preview analyzer kept as a side tool.
+- **Track record** (`/track-record`) — made public (was admin-only); admin still sees raw combined ledger.
+- **Agent Eval real-AI execution** — `workers/api/src/lib/agent-evaluation-execution.ts`: when `HIGH_SIGNAL_AI_API_KEY` (or `OPENAI_API_KEY`) is set, the prompt matrix hits a real LLM and responses are re-analyzed for brandMentioned / brandRecommended / competitors / citations. Falls back to deterministic synthesis without a key.
+- **Lab substrate (Phase 1, expanded)** — `python/lab/`: pgvector docker-compose; schema with `cluster_id` on documents; HN ingest with outbound-link extraction; one-hop materialization (`materialize.py`); GitHub trending HTML scraper (no API key); 4-factor scorer (HN + recency + velocity + GitHub); union-find story clustering over shared link targets + embedding similarity; local sentence-transformer embeddings (384-dim, optional `[embeddings]` extra) with HNSW indexes auto-created; GLiNER entity extraction (optional `[entities]` extra); local-LLM summarization via any OpenAI-compatible endpoint (Ollama / vLLM / etc.); FastAPI exposing `/feed`, `/feed?by_cluster=true`, `/search` (semantic), `/stats`, `/healthz`. Web `/lab` surfaces cluster ids and a cluster-collapse toggle. **Still not shipped from plan 0007:** 14k-repo DB import, GitHub API enrichment (last commit / topics), GitHub-momentum factor in scorer, entity-momentum overlay on `/entities`. See plan 0007 status section.
+
+### Known gaps (real, not "todo theater")
+- **Browser verification (visual)** — `wrangler dev` + `curl` end-to-end verified on 2026-05-25: every region / product / unknown-input path returns a well-formed brief even on an empty D1. Visual rendering of the web shell against this worker has not been double-checked in a real browser yet.
+- **Weekly digest email** — `/digest/{weekly,rss,atom}` worker endpoints serve content; no SMTP / Resend hook exists. Wiring this needs a key + opt-in.
+- **mentionpilot / agentMode migration** — the *product surfaces* are in this repo, but the source repos' deeper adapter logic was not ported in full. Consolidation rule says do not delete them until parity is verified.
+- **D1 migrations on remote** — local migrations applied per convention; `pnpm db:migrate:remote` has not been verified for the latest agent-evaluation tables in this session.
+- **Lab phase 1 completeness** — code is committed but no Postgres is running; bring-up is on the operator.
+
+### Next concrete actions for the operator
+
+Setup (one-time, in order):
+1. `pnpm install` at repo root, `cd python/ingest && uv sync`, `cd python/lab && uv sync`.
+2. `wrangler d1 create high-signal-db` → paste id into `workers/api/wrangler.toml`.
+3. `pnpm db:migrate:local && pnpm db:seed:local` (and `:remote` when ready).
+4. Set Clerk env: `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `ADMIN_ALLOWED_EMAILS`.
+5. Set worker AI env: `HIGH_SIGNAL_AI_API_KEY` (or `OPENAI_API_KEY`) + optional `HIGH_SIGNAL_AI_MODEL`, `HIGH_SIGNAL_AI_ENDPOINT_URL`. Unlocks real LLM calls for Mention checks, Community digests, Agent Eval prompts.
+6. Set Modal Secret `high-signal` with: `AI_BASE_URL`, `AI_API_KEY`, `AI_MODEL`, `SEC_USER_AGENT`.
+
+Run dev:
+7. `pnpm dev` (web + worker), open <http://localhost:3000>.
+
+Sync 4 weeks of data (Sarthak's 2026-05-25 directive — "sync at least 4 weeks of data everywhere"):
+
+8. **Signals → D1**: `pnpm signals:sync:local` (markdown → local D1) then `pnpm signals:sync:remote` (markdown → prod D1). Re-running is idempotent; only changed slugs upsert.
+9. **Fresh ingest, 28-day window**: `cd python/ingest && uv run python -m high_signal_ingest.pipeline --source all --days 28`. Drops drafts into `signals/<date>/`. Review + flip `review_status: published` in frontmatter, commit, then rerun step 8.
+10. **Lab substrate (optional)**: see step 11 below.
+
+Bring up Lab (Phase 1, optional):
+11. `docker compose -f python/lab/docker-compose.yml up -d` (pgvector + pg_trgm; schema runs on first init).
+12. `cd python/lab && uv sync` (+ `--extra embeddings` and/or `--extra entities` if you want those passes).
+13. Pipeline (each step idempotent):
+    - `uv run python -m high_signal_lab.ingest --limit 30`
+    - `uv run python -m high_signal_lab.materialize --limit 50`
+    - `uv run python -m high_signal_lab.github_trending`
+    - `uv run python -m high_signal_lab.embed`  *(optional; downloads MiniLM on first run)*
+    - `uv run python -m high_signal_lab.extract_entities` *(optional; runs GLiNER)*
+    - `uv run python -m high_signal_lab.summarize` *(optional; needs `HIGH_SIGNAL_LAB_AI_BASE_URL` — Ollama default)*
+    - `uv run python -m high_signal_lab.cluster`
+    - `uv run python -m high_signal_lab.score`
+14. `uv run python -m high_signal_lab.server` → <http://localhost:8765>.
+15. `export LAB_API_URL=http://localhost:8765` then refresh `/lab` and `/review/lab-candidates`.
 
 
 <claude-mem-context>

@@ -4,6 +4,7 @@ import "./globals.css";
 import { AnalyticsProvider } from "@/components/posthog-provider";
 import { SaaSMakerFeedback } from "@/components/saasmaker-feedback";
 import { AuthNav } from "@/components/auth/AuthNav";
+import { PrimaryNav } from "@/components/system/PrimaryNav";
 
 export const metadata: Metadata = {
   title: "High Signal — signal intelligence",
@@ -17,6 +18,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-dvh font-sans antialiased">
         <ClerkProvider>
           <AnalyticsProvider>
+            <PrimaryNav />
             <AuthNav />
             {children}
             <SaaSMakerFeedback />

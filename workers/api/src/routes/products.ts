@@ -5,6 +5,7 @@ import { BADGE_WIDGET_JS } from "../lib/badge-widget";
 import { generateCommunityDigest } from "../lib/community-research";
 import { searchExternalMentions } from "../lib/external-monitors";
 import { runMentionCheck } from "../lib/mention-execution";
+import { executePromptsWithAI } from "../lib/agent-evaluation-execution";
 import { buildAgentEvaluationAudit, normalizeCommunitySummary } from "@high-signal/shared";
 import type {
   AgentEvaluationAudit,
@@ -145,7 +146,13 @@ productsRoute.post("/agent-eval/audits", async (c) => {
   const parsed = parseAgentAuditInput(ownerId, body);
   if ("error" in parsed) return c.json({ error: parsed.error }, 400);
 
-  const result = buildAgentEvaluationAudit(parsed.input);
+  const baseResult = buildAgentEvaluationAudit(parsed.input);
+  const enrichedPrompts = await executePromptsWithAI({
+    env: c.env,
+    audit: parsed.input,
+    prompts: baseResult.prompts,
+  });
+  const result = { ...baseResult, prompts: enrichedPrompts };
   const now = new Date();
   const auditId = crypto.randomUUID();
   const database = db(c.env.DB);

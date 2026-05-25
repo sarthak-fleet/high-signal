@@ -12,13 +12,13 @@ cpu_ms = 30000
 [vars]
 ENVIRONMENT = "production"
 
-[triggers]
-# Daily ingest at 06:00 UTC
-crons = ["0 6 * * *"]
+# Cron triggers intentionally not declared here. Daily ingest + scoring run via
+# GitHub Actions workflows (.github/workflows/cron-ingest.yml + cron-score.yml).
+# The worker `scheduled` handler in src/index.ts is a fallback Modal dispatch
+# that no-ops unless MODAL_TRIGGER_URL is set — kept for ad-hoc operator runs.
 
 [[d1_databases]]
 binding = "DB"
 database_name = "high-signal-db"
-# Replace after `wrangler d1 create high-signal-db`
 database_id = "ebeab72b-61ab-4588-936c-1da6652a2ce4"
 migrations_dir = "../../packages/db/migrations"
