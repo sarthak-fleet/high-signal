@@ -59,6 +59,11 @@ const args = new Set(process.argv.slice(2));
 const REMOTE = args.has("--remote");
 const DRY = args.has("--dry");
 const LOCAL = !REMOTE;
+/**
+ * --reapply: also re-judge currently-published signals and KILL any that
+ * fail the rubric. One-time cleanup mode for after a rule change.
+ */
+const REAPPLY_PUBLISHED = args.has("--reapply");
 
 const API_BASE =
   process.env["API_BASE"] ??
@@ -73,11 +78,11 @@ const AI_MODEL = process.env["AI_MODEL"] ?? "deepseek-chat";
 const MAX_BODY_CHARS = 2400;
 const RATE_LIMIT_MS = 250; // gentle pacing between AI calls
 
-async function fetchDrafts(): Promise<SignalRow[]> {
-  const url = `${API_BASE}/signals?status=draft&limit=500`;
+async function fetchSignalsByStatus(status: "draft" | "published"): Promise<SignalRow[]> {
+  const url = `${API_BASE}/signals?status=${status}&limit=500`;
   const r = await fetch(url, { cache: "no-store" } as RequestInit);
   if (!r.ok) {
-    throw new Error(`drafts fetch ${r.status} from ${url}`);
+    throw new Error(`${status} fetch ${r.status} from ${url}`);
   }
   const data = (await r.json()) as { signals: SignalRow[] };
   return data.signals;
@@ -195,17 +200,25 @@ async function judge(signal: SignalRow): Promise<VerdictResult> {
 }
 
 async function main(): Promise<void> {
-  console.log(`[auto-publish] target=${API_BASE} dry=${DRY} ai=${AI_API_KEY ? "yes" : "no"}`);
-  const drafts = await fetchDrafts();
-  console.log(`[auto-publish] ${drafts.length} draft signals to judge`);
-  if (drafts.length === 0) return;
+  console.log(
+    `[auto-publish] target=${API_BASE} dry=${DRY} ai=${AI_API_KEY ? "yes" : "no"} reapply=${REAPPLY_PUBLISHED}`,
+  );
+  const drafts = await fetchSignalsByStatus("draft");
+  const published = REAPPLY_PUBLISHED ? await fetchSignalsByStatus("published") : [];
+  const toJudge = [...drafts, ...published];
+  console.log(
+    `[auto-publish] judging ${drafts.length} drafts${REAPPLY_PUBLISHED ? ` + ${published.length} already-published (reapply)` : ""}`,
+  );
+  if (toJudge.length === 0) return;
+  const isPublished = new Set(published.map((s) => s.slug));
 
   let published = 0;
   let killed = 0;
   let held = 0;
   let errors = 0;
 
-  for (const signal of drafts) {
+  let publishedCount = 0;
+  for (const signal of toJudge) {
     let verdict: VerdictResult;
     try {
       verdict = await judge(signal);
@@ -215,14 +228,21 @@ async function main(): Promise<void> {
       continue;
     }
     const tag = verdict.source === "ai" ? "AI " : "rul";
+    const wasPublished = isPublished.has(signal.slug);
     if (verdict.verdict === "publish") {
+      // Skip the PATCH if already published — no-op.
+      if (wasPublished) {
+        publishedCount++;
+        continue;
+      }
       const ok = await patchReviewStatus(signal.slug, "published");
-      if (ok) published++; else errors++;
+      if (ok) publishedCount++; else errors++;
       console.log(`  [${tag}]  PUBLISH  ${signal.slug}  — ${verdict.reason}`);
     } else if (verdict.verdict === "kill") {
       const ok = await patchReviewStatus(signal.slug, "killed");
       if (ok) killed++; else errors++;
-      console.log(`  [${tag}]    KILL   ${signal.slug}  — ${verdict.reason}`);
+      const label = wasPublished ? "UNPUB" : "KILL";
+      console.log(`  [${tag}]    ${label}  ${signal.slug}  — ${verdict.reason}`);
     } else {
       held++;
       console.log(`  [${tag}]    HOLD   ${signal.slug}  — ${verdict.reason}`);
@@ -233,7 +253,7 @@ async function main(): Promise<void> {
   }
 
   console.log(
-    `[auto-publish] done: ${published} published / ${killed} killed / ${held} held / ${errors} errors`,
+    `[auto-publish] done: ${publishedCount} published-or-kept / ${killed} killed / ${held} held / ${errors} errors`,
   );
   if (errors > 0) process.exit(1);
 }
