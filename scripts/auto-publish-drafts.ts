@@ -34,6 +34,8 @@
  * install." This is that path.
  */
 
+import { deterministicVerdict, type VerdictResult } from "./auto-publish-rules";
+
 interface SignalRow {
   id: string;
   slug: string;
@@ -51,14 +53,6 @@ interface SignalRow {
   sourceClasses?: string[];
   independentSourceCount?: number;
   qualityReasons?: string[];
-}
-
-type Verdict = "publish" | "kill" | "hold";
-
-interface VerdictResult {
-  verdict: Verdict;
-  reason: string;
-  source: "ai" | "rule";
 }
 
 const args = new Set(process.argv.slice(2));
@@ -91,7 +85,7 @@ async function fetchDrafts(): Promise<SignalRow[]> {
 
 async function patchReviewStatus(
   slug: string,
-  reviewStatus: "published" | "corrected",
+  reviewStatus: "published" | "killed",
 ): Promise<boolean> {
   if (DRY) return true;
   if (!ADMIN_TOKEN) {
@@ -114,45 +108,8 @@ async function patchReviewStatus(
   return true;
 }
 
-function deterministicVerdict(signal: SignalRow): VerdictResult {
-  const evidence = signal.evidenceUrls?.length ?? 0;
-  const independent = signal.independentSourceCount ?? 0;
-  const reasons = signal.qualityReasons ?? [];
-
-  if (signal.publishable === true) {
-    return {
-      verdict: "publish",
-      reason: "pipeline already flagged publishable=true",
-      source: "rule",
-    };
-  }
-  if (evidence < 2) {
-    return {
-      verdict: "kill",
-      reason: `only ${evidence} evidence url(s) — fails the cite-or-kill rule`,
-      source: "rule",
-    };
-  }
-  if (reasons.includes("fallback_or_backfill") && independent < 2) {
-    return {
-      verdict: "kill",
-      reason: "fallback draft with only one independent source class — too thin",
-      source: "rule",
-    };
-  }
-  if (independent >= 2) {
-    return {
-      verdict: "publish",
-      reason: `${independent} independent source classes corroborate`,
-      source: "rule",
-    };
-  }
-  return {
-    verdict: "hold",
-    reason: "deterministic rubric inconclusive — needs AI judgment",
-    source: "rule",
-  };
-}
+// Pure helpers live in ./auto-publish-rules.ts so they're testable without
+// the script's side-effects. See that file for the policy rationale.
 
 const JUDGE_SYSTEM = `You are the final gate on the High Signal Daily Brief. \
 You decide whether a draft signal SHIPS, gets KILLED, or HOLDS.
@@ -263,7 +220,7 @@ async function main(): Promise<void> {
       if (ok) published++; else errors++;
       console.log(`  [${tag}]  PUBLISH  ${signal.slug}  — ${verdict.reason}`);
     } else if (verdict.verdict === "kill") {
-      const ok = await patchReviewStatus(signal.slug, "corrected");
+      const ok = await patchReviewStatus(signal.slug, "killed");
       if (ok) killed++; else errors++;
       console.log(`  [${tag}]    KILL   ${signal.slug}  — ${verdict.reason}`);
     } else {

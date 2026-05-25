@@ -63,7 +63,7 @@ interface SignalUpsert {
   publishedAt: string; // ISO
   evidenceUrls: string[];
   spilloverEntityIds?: string[];
-  reviewStatus?: "draft" | "published" | "corrected";
+  reviewStatus?: "draft" | "published" | "corrected" | "killed";
   supersedesSignalId?: string | null;
   bodyMd: string;
 }
@@ -176,7 +176,7 @@ async function ensureEntities(d1: D1Database, ids: (string | null | undefined)[]
 adminRoute.patch("/signals/:slug", async (c) => {
   const slug = c.req.param("slug");
   const body = (await c.req.json()) as {
-    reviewStatus?: "draft" | "published" | "corrected";
+    reviewStatus?: "draft" | "published" | "corrected" | "killed";
     supersedesSignalId?: string | null;
   };
   const updates: Record<string, unknown> = {};

@@ -59,7 +59,7 @@ signalsRoute.get("/", async (c) => {
   const { start, end } = parseDateRange(c);
 
   const conditions: SQL[] = [
-    eq(schema.signals.reviewStatus, status as "draft" | "published" | "corrected"),
+    eq(schema.signals.reviewStatus, status as "draft" | "published" | "corrected" | "killed"),
   ];
   if (status === "published") conditions.push(notBackfill());
   if (type) conditions.push(eq(schema.signals.signalType, type));

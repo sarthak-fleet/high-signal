@@ -87,7 +87,7 @@ export const signals = sqliteTable(
     evidenceUrls: text("evidence_urls", { mode: "json" }).notNull(),
     spilloverEntityIds: text("spillover_entity_ids", { mode: "json" }),
     reviewStatus: text("review_status", {
-      enum: ["draft", "published", "corrected"],
+      enum: ["draft", "published", "corrected", "killed"],
     })
       .notNull()
       .default("draft"),

@@ -88,7 +88,18 @@ research/              # Domain notes, source experiments, prompt drafts, market
 - **Versioned signal memory** — signal log is git; corrections are new signals citing prior
 - **Confidence as a band** — `low` / `medium` / `high`, calibrated post-hoc against hit-rate
 - **Public hit-rate ledger from day 1** — moat that competitors can't copy without rebuilding
-- **Auto-publish, no human gate** — Sarthak's 2026-05-26 directive: "I don't want it blocked by me." A daily `cron-publish.yml` workflow runs `scripts/auto-publish-drafts.ts` at 07:00 UTC. The deterministic rubric (≥ 2 independent source classes → publish; manifold-only fallback drafts → kill) handles the unambiguous cases; an AI judge (DeepSeek by default, OpenAI-compatible) fires only for genuinely borderline drafts. Bias toward decision over hold so the queue stays clear. The `/review` page remains accessible as an override surface but is not on the daily critical path.
+- **Auto-publish, no human gate** — Sarthak's 2026-05-26 directive: "I don't want it blocked by me." A daily `cron-publish.yml` workflow runs `scripts/auto-publish-drafts.ts` at 07:00 UTC. Two-tier judge:
+  1. Deterministic rubric (in `scripts/auto-publish-rules.ts`, unit-tested by `scripts/auto-publish-rules.test.ts`):
+     - `< 2` evidence URLs → KILL (cite-or-kill floor)
+     - prediction-market-only (manifold / polymarket / kalshi / metaculus alone, or `sourceClasses=['market']`) → KILL even if pipeline marked `publishable=true` (markets reflect crowd opinion, not new information)
+     - `publishable=true` AND `independentSourceCount >= 2` → PUBLISH (strongest case)
+     - `fallback_or_backfill` quality reason → KILL (pipeline already flagged low confidence)
+     - `publishable=true` but thin corroboration → HOLD (escalate to AI)
+     - corroboration but pipeline held back → HOLD (escalate to AI)
+     - otherwise → KILL
+  2. AI judge (DeepSeek default, any OpenAI-compatible) fires only on HOLD.
+  3. Without AI available, biases HOLD → KILL so the queue stays clear.
+  Verdict effects: PUBLISH → `review_status='published'`; KILL → `review_status='killed'` (new fourth status, reversible via `/review`; the brief never reads from it). The `/review` page remains accessible as an override surface but is not on the daily critical path.
 - **World change → product opportunity** — major changes and repeated app complaints should become concrete product ideas with target user, why-now, evidence, and next validation step
 - **Human attention + agent evaluation** — short-form content earns consideration; structured evidence earns recommendation
 

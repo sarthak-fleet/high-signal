@@ -82,7 +82,7 @@ export interface SignalRow {
   publishedAt: number;
   evidenceUrls: string[];
   spilloverEntityIds: string[];
-  reviewStatus: "draft" | "published" | "corrected";
+  reviewStatus: "draft" | "published" | "corrected" | "killed";
   bodyMd: string;
   contentCategory?: SignalContentCategory;
   qualityScore?: number;
@@ -216,7 +216,7 @@ export interface SignalFilters {
   direction?: Direction;
   confidence?: Confidence;
   entity?: string;
-  status?: "draft" | "published" | "corrected";
+  status?: "draft" | "published" | "corrected" | "killed";
   date?: string;
   from?: string;
   to?: string;

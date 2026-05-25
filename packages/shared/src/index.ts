@@ -1,6 +1,6 @@
 export type Direction = "up" | "down" | "neutral";
 export type Confidence = "low" | "medium" | "high";
-export type ReviewStatus = "draft" | "published" | "corrected";
+export type ReviewStatus = "draft" | "published" | "corrected" | "killed";
 export type Outcome = "hit" | "miss" | "push" | "pending";
 
 export type RelationshipType =
