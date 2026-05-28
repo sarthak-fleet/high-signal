@@ -22,7 +22,6 @@
     "@saas-maker/analytics-sdk": "^0.2.1",
     "@saas-maker/changelog-widget": "^0.2.1",
     "@saas-maker/feedback": "^0.2.1",
-    "@saas-maker/posthog-client": "^0.1.0",
     "@saas-maker/testimonials": "^0.2.1",
     "clsx": "2.1.1",
     "geist": "^1.7.0",
@@ -31,7 +30,8 @@
     "next": "16.2.4",
     "react": "19.2.5",
     "react-dom": "19.2.5",
-    "tailwind-merge": "3.5.0"
+    "tailwind-merge": "3.5.0",
+    "posthog-js": "^1.372.1"
   },
   "devDependencies": {
     "@opennextjs/cloudflare": "1.19.4",

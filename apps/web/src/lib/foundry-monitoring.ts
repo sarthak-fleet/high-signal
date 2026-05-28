@@ -1,6 +1,6 @@
 "use client";
 
-import { initPostHog, track } from "@saas-maker/posthog-client";
+import posthog from "posthog-js";
 
 const PROJECT_SLUG = "high-signal";
 const POSTHOG_KEY = "phc_qgiAarw4Co4pw9fz3Fxj4UJaHmqzFetqs4JrXhGc35Nd";
@@ -17,9 +17,12 @@ function messageFrom(error: unknown) {
   return String(error);
 }
 
+export function trackEvent(event: string, properties: Record<string, unknown> = {}) {
+  posthog.capture(event, { project_id: PROJECT_SLUG, ...properties });
+}
+
 export function capturePageCrash(error: unknown, source: "window_error" | "unhandled_rejection") {
-  track("foundry_page_crash", {
-    project_slug: PROJECT_SLUG,
+  trackEvent("foundry_page_crash", {
     route: route(),
     source,
     message: messageFrom(error),
@@ -29,7 +32,7 @@ export function capturePageCrash(error: unknown, source: "window_error" | "unhan
 
 export function installBrowserMonitoring() {
   if (typeof window === "undefined") return () => {};
-  initPostHog({ apiKey: POSTHOG_KEY, host: POSTHOG_HOST });
+  posthog.init(POSTHOG_KEY, { api_host: POSTHOG_HOST, person_profiles: "always", capture_pageview: false, autocapture: false });
 
   const onError = (event: ErrorEvent) => capturePageCrash(event.error ?? event.message, "window_error");
   const onUnhandledRejection = (event: PromiseRejectionEvent) => capturePageCrash(event.reason, "unhandled_rejection");
