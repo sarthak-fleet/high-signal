@@ -316,6 +316,23 @@ export const api = {
         } | null;
       }>;
     }>(`/convergence?hours=${hours}&min_sources=${minSources}`),
+  unmapped: (hours = 24, top = 30) =>
+    fetchJson<{
+      generatedAt: string;
+      windowHours: number;
+      eventsScanned: number;
+      candidates: Array<{
+        token: string;
+        count: number;
+        sources: string[];
+        samples: Array<{
+          title: string;
+          source: string;
+          source_url: string;
+          published_at: number;
+        }>;
+      }>;
+    }>(`/unmapped?hours=${hours}&top=${top}`),
   digestWeekly: () =>
     fetchJson<{ since: string; signals: SignalRow[] }>("/digest/weekly"),
   redditCommunity: (subreddit: string) =>

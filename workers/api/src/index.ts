@@ -11,6 +11,7 @@ import { communitiesRoute } from "./routes/communities";
 import { productsRoute } from "./routes/products";
 import { briefRoute } from "./routes/brief";
 import { convergenceRoute } from "./routes/convergence";
+import { unmappedRoute } from "./routes/unmapped";
 
 type Env = {
   DB: D1Database;
@@ -38,6 +39,7 @@ app.route("/communities", communitiesRoute);
 app.route("/products", productsRoute);
 app.route("/brief", briefRoute);
 app.route("/convergence", convergenceRoute);
+app.route("/unmapped", unmappedRoute);
 
 export default {
   fetch: app.fetch,
