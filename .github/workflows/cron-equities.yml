@@ -47,8 +47,8 @@ jobs:
         with:
           node-version: "20"
       - uses: pnpm/action-setup@v4
-        with:
-          version: 9
+        # Reads version from package.json `packageManager` field — keep this
+        # action invocation minimal so the two never drift.
       - name: pnpm install
         run: pnpm install --frozen-lockfile
       - name: build equities-snapshot.json
