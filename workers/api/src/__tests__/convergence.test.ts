@@ -1,5 +1,18 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import app from "../index";
+
+const originalFetch = globalThis.fetch;
+
+// Convergence now overlays Wikipedia Pageviews via globalThis.fetch when an
+// entity has a wiki_url in the bundled seed. Stub it out so unit tests don't
+// hit the network.
+beforeEach(() => {
+  globalThis.fetch = vi.fn(async () => new Response("", { status: 404 }));
+});
+afterEach(() => {
+  globalThis.fetch = originalFetch;
+  vi.restoreAllMocks();
+});
 
 const fetcher = app as unknown as {
   fetch(request: Request, env?: Record<string, unknown>): Promise<Response>;

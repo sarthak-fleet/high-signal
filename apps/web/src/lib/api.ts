@@ -316,6 +316,12 @@ export const api = {
           fetchedAtNow: number;
           fetchedAtPrior: number | null;
         } | null;
+        attention: {
+          totalViews: number;
+          avgPerDay: number;
+          trendDirection: "up" | "down" | "flat" | null;
+          trendDeltaPct: number | null;
+        } | null;
       }>;
     }>(`/convergence?hours=${hours}&min_sources=${minSources}`),
   enrichTicker: (token: string) =>

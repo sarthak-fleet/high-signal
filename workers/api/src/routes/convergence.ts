@@ -7,8 +7,41 @@
  */
 
 import { Hono } from "hono";
+import seedEntities from "../lib/seed-entities.json";
+import {
+  articleFromWikiUrl,
+  buildPageviewsUrl,
+  summarize,
+  type AttentionResult,
+} from "./attention";
 
 type Env = { DB: D1Database };
+
+// Bundled name + wiki_url lookup (~275 entities). Used to overlay Wikipedia
+// Pageviews on convergence rows without re-querying D1 for the metadata.
+const SEED_WIKI_BY_ID = new Map<string, { wiki_url: string | null }>();
+for (const e of seedEntities as Array<{ id: string; wiki_url: string | null }>) {
+  if (e.id && e.wiki_url) SEED_WIKI_BY_ID.set(e.id, { wiki_url: e.wiki_url });
+}
+
+const ATTENTION_USER_AGENT =
+  "high-signal-convergence/0.1 " +
+  "(+https://github.com/sarthakagrawal927/high-signal; " +
+  "contact: sarthak@vaultwealth.com)";
+
+async function fetchAttention(article: string, days = 30): Promise<AttentionResult | null> {
+  try {
+    const r = await fetch(buildPageviewsUrl(article, days), {
+      headers: { "User-Agent": ATTENTION_USER_AGENT, Accept: "application/json" },
+      cf: { cacheTtl: 1800, cacheEverything: true } as RequestInitCfProperties,
+    });
+    if (!r.ok) return null;
+    const body = (await r.json()) as { items?: Array<{ timestamp: string; views: number }> };
+    return summarize(article, days, body.items ?? []);
+  } catch {
+    return null;
+  }
+}
 
 interface ConvergenceRow {
   primary_entity_id: string | null;
@@ -170,6 +203,26 @@ convergenceRoute.get("/", async (c) => {
     recentByEntity.set(ev.primary_entity_id, list);
   }
 
+  // Attention overlay — top-N entities only (limit parallel Wikimedia fetches).
+  const ATTENTION_TOP_N = 15;
+  const attentionByEntity = new Map<string, AttentionResult | null>();
+  const topEntities = summary.slice(0, ATTENTION_TOP_N);
+  const attentionResults = await Promise.allSettled(
+    topEntities.map(async (row) => {
+      const eid = row.primary_entity_id ?? "";
+      const wikiUrl = SEED_WIKI_BY_ID.get(eid)?.wiki_url ?? null;
+      const article = articleFromWikiUrl(wikiUrl);
+      if (!article) return { eid, result: null };
+      const result = await fetchAttention(article, 30);
+      return { eid, result };
+    }),
+  );
+  for (const r of attentionResults) {
+    if (r.status === "fulfilled" && r.value) {
+      attentionByEntity.set(r.value.eid, r.value.result);
+    }
+  }
+
   console.log(
     JSON.stringify({
       route: "/convergence",
@@ -177,6 +230,7 @@ convergenceRoute.get("/", async (c) => {
       minSources,
       entities: summary.length,
       velocityHits: velocity.length,
+      attentionHits: Array.from(attentionByEntity.values()).filter(Boolean).length,
     }),
   );
 
@@ -200,6 +254,15 @@ convergenceRoute.get("/", async (c) => {
             fetchedAtPrior: v.fetched_at_prior,
           }
         : null;
+      const attention = attentionByEntity.get(eid) ?? null;
+      const attentionSummary = attention
+        ? {
+            totalViews: attention.totalViews,
+            avgPerDay: Math.round(attention.avgPerDay),
+            trendDirection: attention.trend?.direction ?? null,
+            trendDeltaPct: attention.trend?.deltaPct ?? null,
+          }
+        : null;
       return {
         entityId: row.primary_entity_id,
         name: row.entity_name,
@@ -218,6 +281,7 @@ convergenceRoute.get("/", async (c) => {
           Math.floor(Date.now() / 1000) - row.first_seen_ever < 48 * 3600,
         recent: recentByEntity.get(eid) ?? [],
         marketQuote,
+        attention: attentionSummary,
       };
     }),
   });

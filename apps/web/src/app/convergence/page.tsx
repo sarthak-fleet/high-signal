@@ -146,6 +146,34 @@ export default async function ConvergencePage({ searchParams }: Props) {
                   </span>
                 ))}
               </div>
+              {row.attention ? (
+                <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1 border-l-2 border-zinc-800 pl-3 text-sm">
+                  <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500">
+                    attention · 30d
+                  </span>
+                  <span className="font-mono text-zinc-300">
+                    {row.attention.totalViews.toLocaleString()} views
+                  </span>
+                  <span className="font-mono text-[11px] text-zinc-500">
+                    {row.attention.avgPerDay.toLocaleString()}/day avg
+                  </span>
+                  {row.attention.trendDirection && row.attention.trendDeltaPct != null ? (
+                    <span
+                      className={`ml-auto font-mono text-[11px] ${
+                        row.attention.trendDirection === "up"
+                          ? "text-emerald-300"
+                          : row.attention.trendDirection === "down"
+                            ? "text-red-300"
+                            : "text-zinc-500"
+                      }`}
+                    >
+                      7d vs prior:{" "}
+                      {row.attention.trendDeltaPct >= 0 ? "+" : ""}
+                      {row.attention.trendDeltaPct.toFixed(0)}%
+                    </span>
+                  ) : null}
+                </div>
+              ) : null}
               {row.marketQuote ? (
                 <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1 border-l-2 border-zinc-800 pl-3 text-sm">
                   <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500">

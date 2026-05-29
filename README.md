@@ -123,7 +123,7 @@ Legend used in the notes:
 - [ ] **The Guardian Open Platform** *(free key, 5000/day, full text — only mainstream news with a usable free tier)*
 
 ### Attention
-- [ ] **Wikipedia Pageviews API** *(per-company/product attention curves — biggest signal-per-LOC in this list)*
+- [x] **Wikipedia Pageviews API** — `GET /attention/:article?days=30` returns daily series + 7-vs-prior-7 trend. Overlaid on `/convergence` for the top 15 entities (avg/day + ±%). 275-entity seed JSON bundled in the Worker; no D1 round-trip.
 - [ ] **Wayback Machine CDX** *(diff company `/careers`, `/pricing`, `/about` pages over time — pivots show up here first)*
 - [ ] **Wikidata SPARQL** *(entity resolution + sector/industry classification)*
 
