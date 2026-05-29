@@ -62,6 +62,31 @@ def test_gazetteer_match() -> None:
     assert "NVDA" in hits
 
 
+def test_gazetteer_match_dollar_prefixed_ticker() -> None:
+    # Prediction-market questions commonly use "$TICKER" — the old space-pad
+    # heuristic missed these because "$" isn't a space. Regex word-boundary
+    # match fixes it.
+    text = "Will $ASML reach $1700 by year-end?"
+    hits = gazetteer_match(text)
+    assert "ASML" in hits
+
+
+def test_gazetteer_match_punctuation_boundaries() -> None:
+    # Trailing comma / period / question-mark / colon should all be word boundaries.
+    for suffix in (",", ".", "?", ":", "!", ";"):
+        text = f"NVDA{suffix} earnings beat"
+        hits = gazetteer_match(text)
+        assert "NVDA" in hits, f"missed NVDA before {suffix!r}"
+
+
+def test_gazetteer_match_does_not_match_inside_word() -> None:
+    # Substring inside a longer word — e.g. "MASML" — should NOT match ASML.
+    text = "Some MASML or NVDAX gibberish"
+    hits = gazetteer_match(text)
+    assert "ASML" not in hits
+    assert "NVDA" not in hits
+
+
 def test_primary_entity() -> None:
     text = (
         "AMD signs multi-year supply deal with TSMC. Industry watchers note AMD's MI400 timeline."

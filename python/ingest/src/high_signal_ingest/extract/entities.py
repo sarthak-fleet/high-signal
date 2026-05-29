@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from functools import lru_cache
 from typing import Iterable
 
@@ -13,17 +14,30 @@ def _gazetteer() -> dict[str, str]:
     return entity_gazetteer(load_entities())
 
 
+@lru_cache(maxsize=1)
+def _compiled_patterns() -> list[tuple[re.Pattern[str], str]]:
+    """Pre-compile ``\\bTERM\\b`` patterns per gazetteer entry.
+
+    Regex word boundaries treat ``$``, punctuation, and whitespace uniformly,
+    so ``$ASML``, ``ASML.``, ``ASML,`` and ``ASML 's`` all match a bare ``asml``
+    entry — which the old space-pad heuristic missed for ``$``-prefixed tickers.
+    """
+    out: list[tuple[re.Pattern[str], str]] = []
+    for term, eid in _gazetteer().items():
+        if len(term) < 3:
+            continue
+        out.append((re.compile(rf"\b{re.escape(term)}\b"), eid))
+    return out
+
+
 def gazetteer_match(text: str) -> list[str]:
     """Cheap deterministic match against known entities. Returns entity IDs."""
     if not text:
         return []
     needle = text.lower()
     hits: set[str] = set()
-    for term, eid in _gazetteer().items():
-        if len(term) < 3:
-            continue
-        # Word-boundary-ish: pad with spaces / punctuation
-        if f" {term} " in f" {needle} " or f" {term}." in needle or f" {term}," in needle:
+    for pattern, eid in _compiled_patterns():
+        if pattern.search(needle):
             hits.add(eid)
     return sorted(hits)
 
