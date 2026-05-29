@@ -10,6 +10,7 @@ import { marketsRoute } from "./routes/markets";
 import { communitiesRoute } from "./routes/communities";
 import { productsRoute } from "./routes/products";
 import { briefRoute } from "./routes/brief";
+import { convergenceRoute } from "./routes/convergence";
 
 type Env = {
   DB: D1Database;
@@ -36,6 +37,7 @@ app.route("/markets", marketsRoute);
 app.route("/communities", communitiesRoute);
 app.route("/products", productsRoute);
 app.route("/brief", briefRoute);
+app.route("/convergence", convergenceRoute);
 
 export default {
   fetch: app.fetch,

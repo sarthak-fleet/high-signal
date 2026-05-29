@@ -282,6 +282,29 @@ export const api = {
         hitRate: number | null;
       }>;
     }>(`/sectors?days=${days}`),
+  convergence: (hours = 24, minSources = 3) =>
+    fetchJson<{
+      generatedAt: string;
+      windowHours: number;
+      minSources: number;
+      rows: Array<{
+        entityId: string;
+        name: string | null;
+        ticker: string | null;
+        sector: string | null;
+        sourceCount: number;
+        eventCount: number;
+        sources: string[];
+        latestAt: number;
+        earliestAt: number;
+        recent: Array<{
+          source: string;
+          title: string | null;
+          source_url: string;
+          published_at: number;
+        }>;
+      }>;
+    }>(`/convergence?hours=${hours}&min_sources=${minSources}`),
   digestWeekly: () =>
     fetchJson<{ since: string; signals: SignalRow[] }>("/digest/weekly"),
   redditCommunity: (subreddit: string) =>
