@@ -46,12 +46,20 @@ export function termsFor(entity: GazetteerEntity): string[] {
   return Array.from(out).filter((t) => t.length >= MIN_TERM_LEN);
 }
 
-/** Build the same `\bTERM\b` patterns the Python matcher uses, in one pass. */
+/**
+ * Build `(?<!\w)TERM(?!\w)` patterns per term — same shape the Python matcher
+ * uses. Lookaround boundaries (not `\b`) so terms that themselves start with
+ * a non-word char (`^GSPC`, `$BTC-USD`) still match — `\b\^gspc\b` would fail
+ * at start-of-string because there's no word-to-nonword transition.
+ */
 export function buildPatterns(entities: GazetteerEntity[]): CompiledPattern[] {
   const out: CompiledPattern[] = [];
   for (const e of entities) {
     for (const term of termsFor(e)) {
-      out.push({ re: new RegExp(`\\b${escapeRegex(term)}\\b`, "i"), eid: e.id });
+      out.push({
+        re: new RegExp(`(?<!\\w)${escapeRegex(term)}(?!\\w)`, "i"),
+        eid: e.id,
+      });
     }
   }
   return out;

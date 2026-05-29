@@ -124,6 +124,11 @@ export default async function ConvergencePage({ searchParams }: Props) {
                       {row.sector}
                     </span>
                   ) : null}
+                  {row.isNew ? (
+                    <span className="ml-2 rounded border border-emerald-700/60 px-1.5 py-0 font-mono text-[10px] uppercase tracking-[0.18em] text-emerald-300">
+                      new
+                    </span>
+                  ) : null}
                 </div>
                 <div className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">
                   <span className="text-[var(--color-accent)]">{row.sourceCount} sources</span>

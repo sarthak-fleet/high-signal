@@ -9,11 +9,21 @@ const fetcher = app as unknown as {
 const originalFetch = globalThis.fetch;
 
 describe("enrich pure helpers", () => {
-  it("buildSparql includes the ticker as a literal", () => {
+  it("buildSparql uses a regex filter on P249 (not literal equality)", () => {
     const q = buildSparql("NVDA");
-    expect(q).toContain('wdt:P249 "NVDA"');
+    // p:P249/ps:P249 + REGEX is the path that catches both "NVDA" and
+    // qualified forms like "NASDAQ: NVDA".
+    expect(q).toContain("p:P249/ps:P249");
+    expect(q).toContain("REGEX");
+    expect(q).toContain("NVDA");
     expect(q).toContain("?countryLabel");
     expect(q).toContain("schema:about");
+  });
+
+  it("buildSparql escapes quotes in the ticker", () => {
+    // Edge case — should never happen but harden against injection.
+    const q = buildSparql('XX"YY');
+    expect(q).not.toContain('"XX"YY"');
   });
 
   it("parseSparql returns nulls when the response is empty", () => {
@@ -103,18 +113,20 @@ describe("/enrich/ticker", () => {
   });
 
   it("strips a leading $ from the token", async () => {
-    let capturedUrl = "";
+    const urls: string[] = [];
     globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
-      capturedUrl = String(input);
+      urls.push(String(input));
       return new Response(JSON.stringify({ results: { bindings: [] } }), {
         headers: { "content-type": "application/json" },
       });
     });
     const res = await fetcher.fetch(new Request("http://t/enrich/ticker?token=$NVDA"));
     expect(res.status).toBe(200);
-    // SPARQL request URL should contain the bare ticker, not "$NVDA"
-    expect(decodeURIComponent(capturedUrl)).toContain('"NVDA"');
-    expect(decodeURIComponent(capturedUrl)).not.toContain('"$NVDA"');
+    // First fetch is the SPARQL query — it should contain the bare ticker.
+    const sparqlUrl = decodeURIComponent(urls[0]);
+    expect(sparqlUrl).toContain("query.wikidata.org");
+    expect(sparqlUrl).toContain("NVDA");
+    expect(sparqlUrl).not.toContain("$NVDA");
   });
 
   it("returns fallback enrichment when Wikidata is down", async () => {
@@ -153,8 +165,56 @@ describe("/enrich/ticker", () => {
     const body = (await res.json()) as {
       enrichment: { name: string };
       csvRow: string;
+      source: string;
     };
     expect(body.enrichment.name).toBe("Apple Inc.");
     expect(body.csvRow).toContain("Apple Inc.");
+    expect(body.source).toBe("wikidata");
+  });
+
+  it("falls back to Wikipedia OpenSearch when Wikidata returns no bindings", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("query.wikidata.org")) {
+        return new Response(JSON.stringify({ results: { bindings: [] } }), {
+          headers: { "content-type": "application/json" },
+        });
+      }
+      if (url.includes("wikipedia.org") && url.includes("opensearch")) {
+        return new Response(
+          JSON.stringify([
+            "NVDA stock",
+            ["Nvidia"],
+            ["Computer hardware company"],
+            ["https://en.wikipedia.org/wiki/Nvidia"],
+          ]),
+          { headers: { "content-type": "application/json" } },
+        );
+      }
+      return new Response("not found", { status: 404 });
+    });
+    globalThis.fetch = fetchMock;
+
+    const res = await fetcher.fetch(new Request("http://t/enrich/ticker?token=$NVDA"));
+    const body = (await res.json()) as {
+      enrichment: { name: string | null; wikiUrl: string | null };
+      source: string;
+    };
+    expect(body.source).toBe("wikipedia");
+    expect(body.enrichment.name).toBe("Nvidia");
+    expect(body.enrichment.wikiUrl).toBe("https://en.wikipedia.org/wiki/Nvidia");
+  });
+
+  it("returns source=fallback when both Wikidata and Wikipedia miss", async () => {
+    globalThis.fetch = vi.fn(async () => {
+      throw new Error("everything is down");
+    });
+    const res = await fetcher.fetch(new Request("http://t/enrich/ticker?token=$XYZ"));
+    const body = (await res.json()) as {
+      enrichment: { name: string | null };
+      source: string;
+    };
+    expect(body.source).toBe("fallback");
+    expect(body.enrichment.name).toBeNull();
   });
 });

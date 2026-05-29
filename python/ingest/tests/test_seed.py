@@ -87,6 +87,20 @@ def test_gazetteer_match_does_not_match_inside_word() -> None:
     assert "NVDA" not in hits
 
 
+def test_gazetteer_match_lookaround_does_not_break_normal_cases() -> None:
+    # Smoke-test that switching from \b to lookarounds keeps the normal
+    # matches working — start, middle, end of string with various punctuation.
+    cases = [
+        ("NVDA up 3%",   "NVDA"),       # start of string
+        ("Watch NVDA",   "NVDA"),       # end of string, after space
+        ("Buy NVDA, hold", "NVDA"),     # comma after
+        ("(NVDA)",       "NVDA"),       # bracketed
+    ]
+    for text, expected in cases:
+        hits = gazetteer_match(text)
+        assert expected in hits, f"missed {expected} in {text!r}"
+
+
 def test_primary_entity() -> None:
     text = (
         "AMD signs multi-year supply deal with TSMC. Industry watchers note AMD's MI400 timeline."

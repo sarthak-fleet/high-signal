@@ -83,12 +83,23 @@ export function parseSparql(
   };
 }
 
-/** Build the SPARQL query for a given ticker. */
+/**
+ * Build the SPARQL query for a given ticker.
+ *
+ * Wikidata's P249 ("ticker symbol") values are often qualified — many entries
+ * store the ticker as ``NASDAQ: NVDA`` or just ``NVDA`` depending on who
+ * edited the record. A literal-equality match on bare ``NVDA`` misses the
+ * qualified form. We use ``p:P249 / ps:P249`` (the property statement) +
+ * a regex filter that matches the ticker as a standalone token within the
+ * stored string. Covers both forms.
+ */
 export function buildSparql(ticker: string): string {
-  // P249 = ticker symbol; P17 = country; P452 = industry; P414 = stock exchange;
-  // P5531 = CIK; P946 = ISIN
+  // P249 = ticker; P17 = country; P452 = industry; P414 = stock exchange;
+  // P5531 = CIK; P946 = ISIN; P31 = instance of (used to filter to companies)
+  const escaped = ticker.replace(/"/g, '\\"');
   return `SELECT ?item ?itemLabel ?countryLabel ?industryLabel ?exchangeLabel ?article ?cik ?isin WHERE {
-  ?item wdt:P249 "${ticker}" .
+  ?item p:P249/ps:P249 ?tk .
+  FILTER(REGEX(STR(?tk), "(^|[^A-Za-z0-9])${escaped}([^A-Za-z0-9]|$)", "i"))
   OPTIONAL { ?item wdt:P17 ?country }
   OPTIONAL { ?item wdt:P452 ?industry }
   OPTIONAL { ?item wdt:P414 ?exchange }
@@ -124,6 +135,29 @@ export function enrichmentToCsvRow(e: EnrichmentResult): string {
 
 export const enrichRoute = new Hono<{ Bindings: Env }>();
 
+/**
+ * Wikipedia OpenSearch — single-call best-effort fallback when SPARQL misses.
+ * Returns a (name, wikiUrl) pair if anything resembles the ticker.
+ */
+async function wikipediaSearchFallback(
+  ticker: string,
+): Promise<{ name: string | null; wikiUrl: string | null }> {
+  try {
+    const url =
+      `https://en.wikipedia.org/w/api.php?action=opensearch&format=json` +
+      `&search=${encodeURIComponent(`${ticker} stock`)}&limit=1`;
+    const r = await fetch(url, { headers: { "User-Agent": USER_AGENT } });
+    if (!r.ok) return { name: null, wikiUrl: null };
+    // OpenSearch returns [query, [titles], [descriptions], [urls]]
+    const j = (await r.json()) as [string, string[], string[], string[]];
+    const title = j[1]?.[0] ?? null;
+    const wikiUrl = j[3]?.[0] ?? null;
+    return { name: title, wikiUrl };
+  } catch {
+    return { name: null, wikiUrl: null };
+  }
+}
+
 enrichRoute.get("/ticker", async (c) => {
   // Strip a leading `$` and any whitespace.
   const raw = (c.req.query("token") ?? "").trim();
@@ -145,9 +179,33 @@ enrichRoute.get("/ticker", async (c) => {
     // Network failures fall through to fallback result.
   }
 
-  const result = parseSparql(ticker, body);
+  let result = parseSparql(ticker, body);
+
+  // If Wikidata didn't return a name, try Wikipedia OpenSearch as a backup
+  // so the user gets something useful even when SPARQL misses.
+  let source: "wikidata" | "wikipedia" | "fallback" = "fallback";
+  if (result.name) {
+    source = "wikidata";
+  } else {
+    const wiki = await wikipediaSearchFallback(ticker);
+    if (wiki.name) {
+      result = { ...result, name: wiki.name, wikiUrl: wiki.wikiUrl };
+      source = "wikipedia";
+    }
+  }
+
+  console.log(
+    JSON.stringify({
+      route: "/enrich/ticker",
+      ticker,
+      source,
+      hasName: result.name !== null,
+    }),
+  );
+
   return c.json({
     enrichment: result,
     csvRow: enrichmentToCsvRow(result),
+    source,
   });
 });

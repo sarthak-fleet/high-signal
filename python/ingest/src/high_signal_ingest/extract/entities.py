@@ -16,17 +16,19 @@ def _gazetteer() -> dict[str, str]:
 
 @lru_cache(maxsize=1)
 def _compiled_patterns() -> list[tuple[re.Pattern[str], str]]:
-    """Pre-compile ``\\bTERM\\b`` patterns per gazetteer entry.
+    """Pre-compile ``(?<!\\w)TERM(?!\\w)`` patterns per gazetteer entry.
 
-    Regex word boundaries treat ``$``, punctuation, and whitespace uniformly,
-    so ``$ASML``, ``ASML.``, ``ASML,`` and ``ASML 's`` all match a bare ``asml``
-    entry — which the old space-pad heuristic missed for ``$``-prefixed tickers.
+    Lookaround boundaries (not ``\\b``) so terms that start with non-word
+    characters still match: ``\\b\\^gspc\\b`` would fail because there's no
+    word-to-nonword transition before ``^``. The lookaround form just asks
+    "no word char on either side," which works for ``^GSPC``, ``$ASML``,
+    ``BRK-B``, ``ASML.``, and plain ``NVDA`` alike.
     """
     out: list[tuple[re.Pattern[str], str]] = []
     for term, eid in _gazetteer().items():
         if len(term) < 3:
             continue
-        out.append((re.compile(rf"\b{re.escape(term)}\b"), eid))
+        out.append((re.compile(rf"(?<!\w){re.escape(term)}(?!\w)"), eid))
     return out
 
 

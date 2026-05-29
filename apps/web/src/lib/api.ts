@@ -297,6 +297,8 @@ export const api = {
         sources: string[];
         latestAt: number;
         earliestAt: number;
+        firstSeenEver: number | null;
+        isNew: boolean;
         recent: Array<{
           source: string;
           title: string | null;
@@ -330,6 +332,7 @@ export const api = {
         isin: string | null;
       };
       csvRow: string;
+      source: "wikidata" | "wikipedia" | "fallback";
     }>(`/enrich/ticker?token=${encodeURIComponent(token)}`),
   unmapped: (hours = 24, top = 30) =>
     fetchJson<{

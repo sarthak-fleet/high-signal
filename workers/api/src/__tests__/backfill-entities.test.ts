@@ -79,6 +79,16 @@ describe("matchEntity", () => {
   it("returns null on empty text", () => {
     expect(matchEntity("", patterns)).toBeNull();
   });
+
+  it("handles terms that start with non-word chars (^GSPC)", () => {
+    const idxEntities: GazetteerEntity[] = [
+      { id: "SPX", name: "S&P 500", ticker: "^GSPC", metadata: null },
+    ];
+    const idxPatterns = buildPatterns(idxEntities);
+    expect(matchEntity("^GSPC closes at all-time high", idxPatterns)).toBe("SPX");
+    // S&P 500 contains "&" — make sure escapeRegex handles it
+    expect(matchEntity("S&P 500 rallies", idxPatterns)).toBe("SPX");
+  });
 });
 
 

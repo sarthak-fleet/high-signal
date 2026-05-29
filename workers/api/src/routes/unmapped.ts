@@ -110,6 +110,16 @@ unmappedRoute.get("/", async (c) => {
 
   const candidates = aggregateCandidates(events).slice(0, candidateLimit);
 
+  console.log(
+    JSON.stringify({
+      route: "/unmapped",
+      hours,
+      eventsScanned: events.length,
+      candidates: candidates.length,
+      topToken: candidates[0]?.token ?? null,
+    }),
+  );
+
   return c.json({
     generatedAt: new Date().toISOString(),
     windowHours: hours,

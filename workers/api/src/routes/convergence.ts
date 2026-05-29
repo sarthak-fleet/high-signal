@@ -20,6 +20,7 @@ interface ConvergenceRow {
   sources: string;            // comma-separated distinct sources
   latest_at: number;          // unix seconds
   earliest_at: number;        // unix seconds
+  first_seen_ever: number | null;  // earliest event for this entity, all-time
 }
 
 interface RecentEvent {
@@ -52,6 +53,9 @@ convergenceRoute.get("/", async (c) => {
   const since = Math.floor(Date.now() / 1000) - hours * 3600;
 
   // Top entities by distinct-source count in the window.
+  // `first_seen_ever` = entity's earliest event across all time (correlated
+  // subquery), so the UI can distinguish "brand new convergence" from
+  // "recurring chatter on a known name."
   const summary = (await c.env.DB.prepare(
     `SELECT
        e.primary_entity_id,
@@ -62,7 +66,9 @@ convergenceRoute.get("/", async (c) => {
        COUNT(*)                 AS event_count,
        GROUP_CONCAT(DISTINCT e.source) AS sources,
        MAX(e.published_at) AS latest_at,
-       MIN(e.published_at) AS earliest_at
+       MIN(e.published_at) AS earliest_at,
+       (SELECT MIN(published_at) FROM events e2
+        WHERE e2.primary_entity_id = e.primary_entity_id) AS first_seen_ever
      FROM events e
      LEFT JOIN entities ent ON ent.id = e.primary_entity_id
      WHERE e.primary_entity_id IS NOT NULL
@@ -119,6 +125,7 @@ convergenceRoute.get("/", async (c) => {
            prob,
            fetched_at,
            market_url,
+           volume,
            LAG(prob) OVER (
              PARTITION BY entity_id, source, market_id
              ORDER BY fetched_at
@@ -127,9 +134,12 @@ convergenceRoute.get("/", async (c) => {
              PARTITION BY entity_id, source, market_id
              ORDER BY fetched_at
            ) AS fetched_at_prior,
+           /* Per-entity pick: latest tick of the highest-volume market.
+              Volume DESC so we pick the most-liquid market the entity has.
+              Tiebreak by recency. */
            ROW_NUMBER() OVER (
              PARTITION BY entity_id
-             ORDER BY fetched_at DESC
+             ORDER BY (volume IS NULL) ASC, volume DESC, fetched_at DESC
            ) AS rn
          FROM market_quotes
          WHERE entity_id IN (${placeholders})
@@ -159,6 +169,16 @@ convergenceRoute.get("/", async (c) => {
     list.push(ev);
     recentByEntity.set(ev.primary_entity_id, list);
   }
+
+  console.log(
+    JSON.stringify({
+      route: "/convergence",
+      hours,
+      minSources,
+      entities: summary.length,
+      velocityHits: velocity.length,
+    }),
+  );
 
   return c.json({
     generatedAt: new Date().toISOString(),
@@ -190,6 +210,12 @@ convergenceRoute.get("/", async (c) => {
         sources: (row.sources ?? "").split(",").filter(Boolean),
         latestAt: row.latest_at,
         earliestAt: row.earliest_at,
+        firstSeenEver: row.first_seen_ever,
+        // Distinguish "new convergence" (entity has been in the system <48h)
+        // from "ongoing chatter" (>48h old) so the UI can badge it.
+        isNew:
+          row.first_seen_ever != null &&
+          Math.floor(Date.now() / 1000) - row.first_seen_ever < 48 * 3600,
         recent: recentByEntity.get(eid) ?? [],
         marketQuote,
       };
