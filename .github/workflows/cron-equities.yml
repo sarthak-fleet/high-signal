@@ -43,10 +43,10 @@ jobs:
           uv run python -m high_signal_ingest.equities_daily --batch 50 $LIMIT_FLAG
 
       # ── Node: regenerate the web data bundles that depend on JSONL ──────
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
-          node-version: "20"
-      - uses: pnpm/action-setup@v4
+          node-version: "22"
+      - uses: pnpm/action-setup@v6
         # Reads version from package.json `packageManager` field — keep this
         # action invocation minimal so the two never drift.
       - name: pnpm install
@@ -74,7 +74,7 @@ jobs:
       # ── Always upload the JSONL as an artifact for debugging ────────────
       - name: upload snapshot artifact
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: equities-snapshot
           path: data/equities-snapshot.jsonl
