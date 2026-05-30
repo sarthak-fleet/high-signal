@@ -30,15 +30,15 @@ Pricing: free. No paid tier, no billing. Region is a free filter.
 - Existing incumbents (AlphaSense, Brightwave, Daloopa) own enterprise research workflows; nobody ships a directed spillover graph + public hit-rate
 - Source layer is fully covered by OSS — no licensed feeds required for v0
 
-## Status (2026-05-25)
+## Status (2026-05-30)
 
 - **Daily Brief** — primary surface at `/` and `/brief`. Worker route `/brief/daily?region=&owner=` composes the five sections from the lenses below. Region filter free for everyone; default global.
 - **Markets lens** — functional. Ingest + signal log + review queue + public hit-rate ledger at `/track-record`. Feeds brief section 1 with inline hit-rate per signal type.
 - **Communities lens** — functional. Tracked-subreddit CRUD, periodic digest generation (LLM summary when `HIGH_SIGNAL_AI_API_KEY` is set, deterministic fallback otherwise). Feeds brief sections 2 and 3.
 - **Mentions lens** — UI + worker wired at `/mentions`. Real LLM checks fail-closed without `HIGH_SIGNAL_AI_API_KEY`; the local preview analyzer panel works regardless. Feeds brief section 4 (per connected brand).
 - **Agent Eval lens** — deterministic 8-area evidence scorer + reel briefs at `/agent-eval`. Real-AI prompt execution overlays when the same key is set. Feeds brief section 5 (per connected brand).
-- **Cross-source convergence** — `/convergence` page + `GET /convergence?hours=24&min_sources=3` API route. Lists entities hit by ≥ N distinct sources in a rolling window — the strongest pre-news pattern in the system. SQL aggregation against the `events` table; no new ingest. Now also overlays the latest prediction-market quote per entity with 4h prob drift, and a "Watching closely" callout sits above the brief composer pulling the same data.
-- **Gazetteer candidates** — `/unmapped` page + `GET /unmapped?hours=24` API route. Extracts $TICKER tokens from recent events with no entity match, ranks by mention count + distinct sources, surfaces top candidates to add to `ai_infra_entities.csv`. Each candidate has a "copy CSV row" button that calls `/enrich/ticker?token=$NVDA`, fetches Wikidata SPARQL for company name + country + industry + Wikipedia URL + CIK, and copies a fully-shaped seed-CSV row to the clipboard. Closes the loop: the more sources you ingest → the more candidates surface → one-click promote → next ingest run picks the new entity up.
+- **Cross-source convergence** — `/convergence` page + `GET /convergence?hours=24&min_sources=3` API route. Lists entities hit by ≥ N distinct sources in a rolling window — the strongest pre-news pattern in the system. SQL aggregation against the `events` table; no new ingest. Now also overlays the latest prediction-market quote per entity with 4h prob drift, and a "Watching closely" callout sits above the brief composer pulling the same data. Breakout/divergence labels carry an inline next-24h hit-rate from a backtest replayed weekly by `cron-backtest.yml`; full ledger at `/track-record/labels` and `GET /track-record/labels`.
+- **Gazetteer candidates** — `/unmapped` page + `GET /unmapped?hours=24` API route. Three candidate streams from the same unmapped-events query: (1) **$TICKER** mentions, (2) **bare tickers** — UPPERCASE 3–5 char tokens matched against a 2,502-symbol allowlist derived from the equities universe, (3) **bare entities** — open-world capitalized 1–3 word phrases that survive a stoplist (countries, common nouns, market platforms) + a leading-word stripper ("Will Harvey Weinstein" → "Harvey Weinstein") + corporate-suffix normalization ("Anthropic PBC" → "Anthropic") + a seed-entities dedupe. Each candidate has a "copy CSV row" button that calls `/enrich/ticker?token=$NVDA`, fetches Wikidata SPARQL for company name + country + industry + Wikipedia URL + CIK, and copies a fully-shaped seed-CSV row to the clipboard. Closes the loop: the more sources you ingest → the more candidates surface → one-click promote → next ingest run picks the new entity up.
 - **Lab substrate** (plan `0007`) — Phase 1 expanded: docker-compose Postgres+pgvector, schema, HN ingest with outbound-link extraction, one-hop materialization, GitHub trending scraper, 4-factor scorer (HN + recency + velocity + GitHub-momentum placeholder), union-find story clustering, local sentence-transformer embeddings + semantic search, GLiNER entity extraction, local-LLM summarization (Ollama / vLLM), FastAPI feed at `/lab` with cluster-collapse toggle. Still pending from plan 0007: 14k-repo DB import, GitHub API enrichment for repos, GitHub-momentum factor in scorer.
 
 For day-to-day stack and conventions, read `agents.md` (canonical).
@@ -56,7 +56,7 @@ Legend used in the notes:
 
 ### Capital, filings, money
 - [x] **SEC EDGAR — 8-K / 10-Q / 10-K** — `python/ingest/sources/edgar.py`
-- [ ] **SEC EDGAR — Form D** *(every priced US Reg D round; biggest current gap)*
+- [ ] **SEC EDGAR — Form D** *(every priced US Reg D round; biggest current gap — only free + structured + official path to private-company funding. Anthropic, OpenAI, xAI, Mistral, Stripe, Databricks, Perplexity, Figma all file. Access: `efts.sec.gov/LATEST/search-index?q=&forms=D` for ad-hoc; daily index at `sec.gov/Archives/edgar/full-index/` for bulk. ~15-day filing lag. Misses pure-EU rounds + bootstrapped revenue.)*
 - [ ] **SEC EDGAR — S-1** *(IPO prospectuses)*
 - [ ] **SEC EDGAR — Form 4** *(insider transactions, with cluster-detection filter)*
 - [ ] **SEC EDGAR — 13F-HR** *(institutional holdings, 45-day-lagged)*
@@ -134,6 +134,17 @@ Legend used in the notes:
 ---
 
 **Naming convention**: ingest sources live under `python/ingest/src/high_signal_ingest/sources/`; sources that produce a web surface own a route under `apps/web/src/app/`; cron workflows live in `.github/workflows/cron-*.yml`. Each new pipeline gets a row in this list — keep it the canonical status board.
+
+## Roadmap — next up (priority order)
+
+Pending work, in the order it's expected to ship. Items move into the
+sections above (with their pipeline / route / cron) as they land.
+
+1. **Rotate Cloudflare API token** — `CF_API_TOKEN` is currently broken in GitHub Actions, so all CI deploys (deploy-api, deploy-web, cron-backtest) fail with code 10000. Local `wrangler deploy` is the workaround. Rotate at `dash.cloudflare.com/profile/api-tokens` with: Account → Workers Scripts:Edit, Account → D1:Edit, User → User Details:Read. Unblocks every cron above.
+2. **SEC EDGAR — Form D ingest** — see the row under "Capital, filings, money" above. Surfaces private-company funding (Anthropic, OpenAI, etc.). Slots in as `python/ingest/src/high_signal_ingest/sources/edgar/form_d.py` + new convergence rows.
+3. **Loosen breakout label threshold** — currently +25% week-over-week pageview delta. `/track-record/labels` shows n=17 for breakout, too thin to retune. Revisit once 4+ weeks of weekly cron data accumulate.
+4. **Promote candidates from `/unmapped` to seed** — manually walk the bare-entity list (Stargate, Extropic AI, Metaculus, MicroStrategy, …) into `ai_infra_entities.csv` so they get mapped on the next ingest. Each promotion shrinks the unmapped surface.
+5. **Backtest cron frequency** — currently weekly (Mondays 09:00 UTC). If `/track-record/labels` numbers feel stale on the convergence page, bump to daily (cheap script, ~30s end-to-end).
 
 ## Will discuss: Signal Studio and playgrounds
 **Signal Studio** is the recommended first playground: a visual content lab that turns High Signal findings into polished marketing assets. It should feel like a futuristic marketing command center, not a boring dashboard. It can be playground-quality visually while still producing assets useful for selling High Signal.

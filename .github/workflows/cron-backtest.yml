@@ -1,0 +1,72 @@
+name: cron-backtest
+
+# Weekly refresh of the breakout/divergence label hit-rates that get
+# rendered on /convergence tooltips and /track-record/labels. The
+# script replays historical convergence labels against the events +
+# signals tables, computes the next-24h hit-rate per label, and writes
+# the result to workers/api/src/lib/label-backtest.json. Committing
+# that file matches the workers/api/** path filter on deploy-api.yml,
+# which redeploys the Worker so the new numbers go live automatically.
+#
+# Requires the CF_API_TOKEN secret — the backtest queries D1 remote
+# via wrangler. If the token is missing or expired the script will
+# fail loudly at the wrangler step.
+
+on:
+  schedule:
+    - cron: "0 9 * * 1"  # Mondays 09:00 UTC — well clear of cron-equities (21:30 UTC)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || '7d048325699a5acddb44d3be31cf6ba9' }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: astral-sh/setup-uv@v8.1.0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: uv sync
+        working-directory: python/ingest
+        run: uv sync
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+      - uses: pnpm/action-setup@v6
+      - name: pnpm install
+        run: pnpm install --frozen-lockfile
+
+      - name: regenerate label backtest
+        run: uv run --project python/ingest python scripts/backtest-convergence-labels.py
+
+      - name: commit refreshed backtest JSON
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add workers/api/src/lib/label-backtest.json
+          if git diff --staged --quiet; then
+            echo "no changes to commit"
+          else
+            git commit -m "chore(backtest): refresh label hit-rates"
+            git push
+          fi
+
+      - name: upload backtest CSV for inspection
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: backtest-convergence-csv
+          path: /tmp/backtest_convergence.csv
+          if-no-files-found: warn
+          retention-days: 30

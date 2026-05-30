@@ -55,6 +55,8 @@ jobs:
         run: pnpm equities:snapshot
       - name: build price-context.json
         run: pnpm price:snapshot
+      - name: bundle known-tickers.json for Worker
+        run: pnpm tickers:bundle
 
       # ── Commit + push so deploy-web picks it up ─────────────────────────
       - name: commit refreshed artifacts
@@ -63,7 +65,8 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data/equities-snapshot.jsonl \
                   apps/web/src/data/equities-snapshot.json \
-                  apps/web/src/data/price-context.json
+                  apps/web/src/data/price-context.json \
+                  workers/api/src/lib/known-tickers.json
           if git diff --staged --quiet; then
             echo "no changes to commit"
           else

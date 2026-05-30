@@ -369,6 +369,28 @@ export const api = {
           published_at: number;
         }>;
       }>;
+      bareTickerCandidates: Array<{
+        token: string;
+        count: number;
+        sources: string[];
+        samples: Array<{
+          title: string;
+          source: string;
+          source_url: string;
+          published_at: number;
+        }>;
+      }>;
+      entityCandidates: Array<{
+        token: string;
+        count: number;
+        sources: string[];
+        samples: Array<{
+          title: string;
+          source: string;
+          source_url: string;
+          published_at: number;
+        }>;
+      }>;
     }>(`/unmapped?hours=${hours}&top=${top}`),
   digestWeekly: () =>
     fetchJson<{ since: string; signals: SignalRow[] }>("/digest/weekly"),
