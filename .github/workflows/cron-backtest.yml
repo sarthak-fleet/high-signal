@@ -8,7 +8,7 @@ name: cron-backtest
 # that file matches the workers/api/** path filter on deploy-api.yml,
 # which redeploys the Worker so the new numbers go live automatically.
 #
-# Requires the CF_API_TOKEN secret — the backtest queries D1 remote
+# Requires the CLOUDFLARE_API_TOKEN secret — the backtest queries D1 remote
 # via wrangler. If the token is missing or expired the script will
 # fail loudly at the wrangler step.
 
@@ -25,8 +25,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || '7d048325699a5acddb44d3be31cf6ba9' }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
       - uses: actions/checkout@v6
         with:
