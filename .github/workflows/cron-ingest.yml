@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       source:
-        description: source filter (all|news|edgar|reddit|ir|github|youtube|gov|gdelt|hkex|markets|cisa-kev|lobsters|techmeme)
+        description: source filter (all, or any value accepted by high_signal_ingest.pipeline --source)
         type: string
         default: all
       days:
@@ -37,6 +37,17 @@ jobs:
           AI_PROJECT_ID: high-signal
           SEC_USER_AGENT: "high-signal sarthakagrawal927@gmail.com"
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GUARDIAN_API_KEY: ${{ secrets.GUARDIAN_API_KEY }}
+          SAM_API_KEY: ${{ secrets.SAM_API_KEY }}
+          REGULATIONS_GOV_API_KEY: ${{ secrets.REGULATIONS_GOV_API_KEY }}
+          COMPANIES_HOUSE_API_KEY: ${{ secrets.COMPANIES_HOUSE_API_KEY }}
+          METACULUS_TOKEN: ${{ secrets.METACULUS_TOKEN }}
+          BLUESKY_IDENTIFIER: ${{ secrets.BLUESKY_IDENTIFIER }}
+          BLUESKY_APP_PASSWORD: ${{ secrets.BLUESKY_APP_PASSWORD }}
+          PODCAST_INDEX_KEY: ${{ secrets.PODCAST_INDEX_KEY }}
+          PODCAST_INDEX_SECRET: ${{ secrets.PODCAST_INDEX_SECRET }}
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+          SEMANTIC_SCHOLAR_API_KEY: ${{ secrets.SEMANTIC_SCHOLAR_API_KEY }}
           EDGAR_TICKER_LIMIT: "25"
           SIGNAL_CLUSTER_LIMIT: "40"
         run: |

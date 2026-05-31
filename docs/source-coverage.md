@@ -35,12 +35,30 @@ Generate daily draft signals from:
 - `gdelt` — broad news backstop and historical replay source.
 - `reddit` — public community weak signals.
 - `github` — releases and repo activity for AI infrastructure projects.
+- `github-archive` — bounded public hourly GitHub Archive reader over already tracked repos.
 - `youtube` — transcripts from selected technical / market channels.
+- `bluesky` — optional-auth AT Protocol search lane; weak-signal social context only.
 - `hkex` — HK-listed AI and semiconductor announcements.
 - `markets` — prediction-market quotes; these are resources for context and scoring, not primary signal cards.
 - `cisa-kev` — known exploited vulnerabilities only; security-risk candidates for mapped infra/devtool entities, not a broad CVE feed.
 - `lobsters` — small technical weak-signal source; useful for developer/infrastructure adoption and risk discussion, not a broad social feed.
 - `techmeme` — meta-curation/corroboration source for mainstream tech/business stories; useful when a weak or primary event has crossed into broader attention.
+- `substack` — curated writer RSS weak-signal pool; useful for developer/startup narrative shifts, not auto-publish alone.
+- `packages` — curated npm/PyPI release and OSV advisory events tied to tracked developer tools and AI packages.
+- `jobs` — curated Greenhouse/Lever/Ashby job-board events as leading startup capital and product-focus indicators.
+- `huggingface` — public Hub model/dataset activity; useful for ecosystem adoption and model-distribution drift.
+- `nvd` — curated NVD CVE queries for tracked security/devtool products; lower priority than CISA KEV unless corroborated.
+- `guardian` — optional-key mainstream news corroboration lane; skipped when `GUARDIAN_API_KEY` is absent.
+- `patents` — curated USPTO PatentsView grants for long-horizon product-lookahead evidence; adapter is wired, but the live API currently returns the USPTO ODP transition page.
+- `gov-contracts` — SBIR public awards plus optional-key SAM.gov opportunity search for federal demand signals.
+- `wikidata` — explicit enrichment/audit source, not included in the daily `--source all` signal run; improves mapping and candidate promotion, not public signal volume.
+- `semantic-scholar` — curated recent research-paper search; useful for technical trend corroboration and early research weak signals.
+- `regulations` — optional-key Regulations.gov document search for dockets and comment windows after a Federal Register notice.
+- `companies-house` — explicit UK company enrichment source, not included in the daily `--source all` signal run.
+- `metaculus` — optional-auth forecast context; never primary evidence and subject to Metaculus terms before broader/commercial use.
+- `podcast-index` — optional-auth podcast metadata lane; transcription is downstream, not daily fetching.
+- `macro-rates` — ECB FX and optional-key FRED risk-free-rate context; explicitly not an equity-price source.
+- `sec-xbrl` — SEC companyfacts fundamentals for tracked public tickers; market-cap joins must use the equities snapshot source of truth.
 
 ### Source Role Policy
 
@@ -48,7 +66,7 @@ Every source must have a role before it is added. More data is not useful unless
 it improves candidate discovery, corroboration, entity mapping, or an explicit
 lens.
 
-- **Primary evidence** — official filings, IR pages, government catalogs, vendor advisories, GitHub releases, and other sources that can anchor a claim.
+- **Primary evidence** — official filings, IR pages, government catalogs, patents, vendor advisories, GitHub releases, and other sources that can anchor a claim.
 - **Corroboration** — trusted news, GDELT, Techmeme-style meta-curation, and independent reporting that confirms a primary event is broader than one page.
 - **Weak-signal candidates** — Reddit, HN, YouTube transcripts, Substack, prediction markets, and community chatter. These can start review items but should not auto-publish alone.
 - **Enrichment** — Wikidata, GLEIF, Wikipedia pageviews, equities snapshots, and other sources that improve mapping, context, or ranking but are rarely a signal by themselves.

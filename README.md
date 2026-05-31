@@ -56,12 +56,12 @@ Legend used in the notes:
 
 ### Capital, filings, money
 - [x] **SEC EDGAR — 8-K / 10-Q / 10-K** — `python/ingest/sources/edgar.py`
-- [ ] **SEC EDGAR — Form D** *(every priced US Reg D round; biggest current gap — only free + structured + official path to private-company funding. Anthropic, OpenAI, xAI, Mistral, Stripe, Databricks, Perplexity, Figma all file. Access: `efts.sec.gov/LATEST/search-index?q=&forms=D` for ad-hoc; daily index at `sec.gov/Archives/edgar/full-index/` for bulk. ~15-day filing lag. Misses pure-EU rounds + bootstrapped revenue.)*
-- [ ] **SEC EDGAR — S-1** *(IPO prospectuses)*
-- [ ] **SEC EDGAR — Form 4** *(insider transactions, with cluster-detection filter)*
-- [ ] **SEC EDGAR — 13F-HR** *(institutional holdings, 45-day-lagged)*
-- [ ] **USPTO PatentsView API** *(12–24mo product lookahead)*
-- [ ] **Companies House (UK)** *(non-US incorporations + filings)*
+- [x] **SEC EDGAR — Form D** *(curated private-company search via `efts.sec.gov/LATEST/search-index`, 15-day filing lag, wider-window runs only)* — `python/ingest/sources/edgar.py`
+- [x] **SEC EDGAR — S-1** *(IPO prospectuses for tracked public tickers, wider-window runs only)* — `python/ingest/sources/edgar.py`
+- [x] **SEC EDGAR — Form 4** *(insider transactions for tracked public tickers, wider-window runs only; cluster scoring still belongs downstream)* — `python/ingest/sources/edgar.py`
+- [x] **SEC EDGAR — 13F-HR** *(institutional holdings for tracked public tickers, wider-window runs only)* — `python/ingest/sources/edgar.py`
+- [x] **USPTO PatentsView API** *(curated assignee grants for 12–24mo product-lookahead evidence; adapter is wired, but the live API is currently in USPTO ODP transition and returns no events)* — `python/ingest/sources/patents.py`
+- [x] **Companies House (UK)** *(optional `COMPANIES_HOUSE_API_KEY`; UK entity enrichment for tracked companies, skipped without a key)* — `python/ingest/sources/companies_house.py`
 - [x] **HKEX issuer announcements** — `python/ingest/sources/hkex.py`
 - [x] **IR pages** — `python/ingest/sources/ir.py`
 - [x] **GLEIF LEI** *(enrichment / entity resolution)* — *(planned: bulk download + cross-source join key)*
@@ -75,64 +75,63 @@ Legend used in the notes:
 - [x] **Tier 1 derivations** — ret_1d/30d/90d/1y/5y (local + USD), volatility, 52-week, SMA50/200, golden/death cross, beta vs SPY — `python/ingest/sources/equities/snapshot.py`
 - [x] **Page** — sortable / filterable table at `/equities`
 - [x] **Cron** — `cron-equities.yml`, 21:30 UTC weekdays; bot auto-commits refresh
-- [ ] **Tier 2** — ECB FX daily, FRED risk-free rates (DGS3MO/DGS10), Wikipedia pageviews per ticker, Wikidata sector/industry, dividend yield
-- [ ] **Tier 3** — SEC XBRL market cap + fundamentals (US), Form 4 insider summary 90d, FINRA short interest biweekly, 13F top 10 holders quarterly, earnings calendar from 8-K item 2.02, GDELT/Reddit/HN mention counts per entity
+- [x] **Tier 2 macro/context** — ECB FX daily + optional-key FRED DGS3MO/DGS10; Wikipedia pageviews and Wikidata enrichment are already wired. Dividend yield remains intentionally out until the single market-data service owns it. — `python/ingest/sources/macro_rates.py`
+- [x] **Tier 3 foundations** — SEC XBRL fundamentals (US), wider-window Form 4 / 13F raw filings, and mention-count inputs from existing events. Market cap must be derived by joining XBRL shares/fundamentals to the single equities snapshot source; FINRA short interest and holder summaries remain downstream analytics, not new source fetchers. — `python/ingest/sources/sec_xbrl.py`, `python/ingest/sources/edgar.py`
 
 ### Jobs (leading capital indicator)
-- [ ] **Greenhouse + Lever + Ashby public job boards** *(one fetcher template, ~2k startup companies enumerated)*
+- [x] **Greenhouse + Lever + Ashby public job boards** *(curated first batch; expand board-slug list toward ~2k startup companies)* — `python/ingest/sources/jobs.py`
 
 ### Builder activity
 - [x] **GitHub releases** *(11 AI-infra repos)* — `python/ingest/sources/github.py`
 - [x] **GitHub trending** *(5 languages × daily/weekly/monthly)* — `python/ingest/lab/github_trending.py`
 - [x] **GitHub stars (personal + ≥ 5k-star repos)** — `../starboard`
-- [ ] **GitHub Archive (BigQuery)** *(full public-event firehose)*
-- [ ] **Hugging Face Hub** *(models / datasets / spaces + download trends)*
-- [ ] **PyPI** *(package releases + download trends)*
-- [ ] **npm registry** *(package releases + download trends)*
-- [ ] **OSV.dev** *(package-ecosystem vulnerability advisories)*
+- [x] **GitHub Archive** *(bounded public hourly archive reader over already tracked repos; avoids ingesting the unrelated firehose)* — `python/ingest/sources/github_archive.py`
+- [x] **Hugging Face Hub** *(recent/trending models + datasets via public Hub API; download trend deltas still pending)* — `python/ingest/sources/huggingface.py`
+- [x] **PyPI** *(curated package releases + OSV-linked vulnerability advisories; download trends still pending)* — `python/ingest/sources/package_registries.py`
+- [x] **npm registry** *(curated package releases + OSV-linked vulnerability advisories; download trends still pending)* — `python/ingest/sources/package_registries.py`
+- [x] **OSV.dev** *(package-ecosystem vulnerability advisories for curated npm/PyPI package set)* — `python/ingest/sources/package_registries.py`
 
 ### Research
 - [x] **arXiv** — `../researchPapers/arxiv.py` (top-10k CS papers, URL extraction)
 - [x] **OpenAlex** — `../researchPapers/openalex.py` (citation graph)
-- [ ] **Semantic Scholar v2** *(deferred; client + batch endpoint exist)*
+- [x] **Semantic Scholar Graph API** *(curated recent research-paper search; no-key public mode with optional API key for rate limits)* — `python/ingest/sources/semantic_scholar.py`
 
 ### Discourse
 - [x] **Hacker News** — `python/ingest/lab/ingest.py` (Firebase API + outbound-link extraction)
 - [x] **Reddit** *(13 subs — hardware/semi-heavy + startup/dev/operator)* — `python/ingest/sources/reddit.py`
 - [x] **YouTube transcripts** *(15 hardware/macro/founder/operator channels)* — `python/ingest/sources/youtube.py`
-- [ ] **Bluesky AT Protocol firehose** *(real founder/researcher presence)*
+- [x] **Bluesky AT Protocol** *(optional-auth search lane for real founder/researcher presence; full Relay firehose can replace it later if volume justifies it)* — `python/ingest/sources/bluesky.py`
 - [x] **Lobste.rs** *(small technical RSS weak-signal source; curated alternative to broad social firehose)* — `python/ingest/sources/lobsters.py`
-- [ ] **Substack RSS pool** *(curated ~200 tech/startup writers — Stratechery, Pragmatic Engineer, Lenny's, etc.)*
+- [x] **Substack RSS pool** *(curated first batch — Pragmatic Engineer, Lenny's, Latent Space, Import AI; expand toward ~200 tech/startup writers)* — `python/ingest/sources/substack.py`
 - [x] **Techmeme RSS** *(meta-curation / corroboration source, not primary evidence)* — `python/ingest/sources/techmeme.py`
-- [ ] **Podcast Index → Whisper** *(Acquired, Lenny's, Dwarkesh, Lex, All-In, 20VC, Latent Space, …)*
+- [x] **Podcast Index → transcript lane** *(optional Podcast Index metadata fetch for Acquired / 20VC / Latent Space; Whisper transcription is a downstream processor, not a daily fetcher concern)* — `python/ingest/sources/podcast_index.py`
 
 ### Policy & standards
-- [x] **Federal Register** *(narrow filter — BIS export controls + Commerce only)* — `python/ingest/sources/gov.py`
-  - [ ] Broaden filter (AI EOs, FTC merger guidelines, SEC private-fund rules, FCC, USCIS, FAA, FDA)
-- [ ] **Regulations.gov** *(rulemaking dockets + comments)*
-- [ ] **SAM.gov + SBIR.gov** *(federal contracts + SBIR topics)*
+- [x] **Federal Register** *(BIS, Commerce, FTC, SEC, FCC, DHS/USCIS, FAA, FDA rulemaking feeds)* — `python/ingest/sources/gov.py`
+- [x] **Regulations.gov** *(optional `REGULATIONS_GOV_API_KEY`; dockets/documents after Federal Register notice)* — `python/ingest/sources/regulations.py`
+- [x] **SAM.gov + SBIR.gov + USAspending** *(SBIR public awards, no-key USAspending awards, plus optional-key SAM.gov opportunity search for AI / semiconductor / datacenter / cybersecurity demand signals)* — `python/ingest/sources/gov_contracts.py`
 
 ### Markets / prediction
 - Scope note: this lane is for forecast/probability markets only. It must not fetch or store equity prices; equity movement context belongs to the equities snapshot pipeline above.
 - [x] **Prediction markets — Polymarket + Manifold** *(10 AI-infra keywords)* — `python/ingest/sources/markets.py`
   - [x] Add **Kalshi** *(US-regulated real-money exchange — cursor-paginated, no-auth read)*
   - [x] **Broaden Polymarket coverage** beyond keyword filter — top-N by 24h volume firehose ("new kinds of gambling people do")
-  - [ ] Add **Metaculus** *(reputation-based long-horizon forecasters — API now requires auth)*
+  - [x] Add **Metaculus** *(optional `METACULUS_TOKEN`; reputation-based long-horizon forecasts, context only because the API requires auth and terms review)* — `python/ingest/sources/metaculus.py`
 
 ### News
 - [x] **GDELT 2.0 DOC API** *(39 themed queries, semi-focused)* — `python/ingest/sources/gdelt.py`
 - [x] **News + blog RSS pool** *(50+ tiered feeds)* — `python/ingest/sources/news.py` + `seed/sources.yaml`
-- [ ] **The Guardian Open Platform** *(free key, 5000/day, full text — only mainstream news with a usable free tier)*
+- [x] **The Guardian Open Platform** *(optional `GUARDIAN_API_KEY`; mainstream corroboration/full-text news lane, skipped cleanly without a key)* — `python/ingest/sources/guardian.py`
 
 ### Attention
 - [x] **Wikipedia Pageviews API** — `GET /attention/:article?days=30` returns daily series + 7-vs-prior-7 trend. Overlaid on `/convergence` for the top 15 entities (avg/day + ±%). 275-entity seed JSON bundled in the Worker; no D1 round-trip.
-- [ ] **Wikidata SPARQL** *(entity resolution + sector/industry classification)*
+- [x] **Wikidata enrichment** *(bounded explicit enrichment adapter plus `/enrich/ticker` SPARQL lookup for candidate promotion; not part of daily `--source all` signal generation)* — `python/ingest/sources/wikidata.py`, `workers/api/src/routes/enrich.ts`
 
 ### Competitor / product intelligence
-- [ ] **Wayback Machine CDX** *(Mention / Agent Eval lane, not general aggregation: diff tracked company `/careers`, `/pricing`, `/about`, `/docs`, and `/compare` pages for positioning, hiring, pricing, and evidence-surface changes)*
+- [x] **Wayback Machine CDX** *(moved out of general aggregation per product boundary; belongs to Mention / Agent Eval product-diff lane, not the High Signal public-source brief)* — other product backlog
 
 ### Security
-- [ ] **NVD CVE API**
+- [x] **NVD CVE API** *(curated keyword queries for tracked security/devtool products; CISA KEV remains the exploited-in-wild source)* — `python/ingest/sources/nvd.py`
 - [x] **CISA KEV catalog** *(known exploited vulnerabilities only; structured security-risk candidates, not a broad CVE firehose)* — `python/ingest/sources/cisa_kev.py`
 
 ---
@@ -145,10 +144,11 @@ Pending work, in the order it's expected to ship. Items move into the
 sections above (with their pipeline / route / cron) as they land.
 
 1. **Rotate Cloudflare API token** — `CF_API_TOKEN` is currently broken in GitHub Actions, so all CI deploys (deploy-api, deploy-web, cron-backtest) fail with code 10000. Local `wrangler deploy` is the workaround. Rotate at `dash.cloudflare.com/profile/api-tokens` with: Account → Workers Scripts:Edit, Account → D1:Edit, User → User Details:Read. Unblocks every cron above.
-2. **Review the source-quality report after the next full ingest** — `pnpm source:quality -- --json` measures fetched events, mapped entities, duplicate-ish source families, and unmapped samples for Reddit / YouTube / CISA KEV / Lobste.rs without writing signals.
+2. **Review the source-quality report after the next full ingest** — `pnpm source:quality -- --json` measures fetched events, mapped entities, duplicate-ish source families, and unmapped samples for Reddit / YouTube / Bluesky / CISA KEV / Lobste.rs / Techmeme / Substack / package registries / jobs / GitHub Archive / Hugging Face / NVD / Guardian / patents / government contracts / Wikidata / Semantic Scholar / Regulations.gov / Companies House / Metaculus / Podcast Index / macro rates / SEC XBRL without writing signals.
 3. **Promote candidates from `/unmapped` to seed** — keep walking recurring high-signal entities into `ai_infra_entities.csv` so they get mapped on the next ingest. The first security/devtool batch is in: Palo Alto Networks, Trend Micro, Drupal, Langflow, Nx, TanStack, and LiteSpeed.
 4. **Monitor the loosened breakout threshold** — breakout now triggers at +15% week-over-week pageview delta. Let the daily backtest build enough observations before retuning again.
-5. **SEC EDGAR — Form D ingest** — high value but heavier. Keep it near the end of this source-expansion pass unless private-company funding becomes the immediate bottleneck.
+5. **Expand curated lists inside wired adapters** — job-board slugs, Substack feeds, npm/PyPI packages, Bluesky searches, Podcast Index feeds, and Form D private-company queries are adapter configuration now; scale those lists before adding another broad firehose.
+6. **Provision optional source credentials** — set only the sources you want live: `GUARDIAN_API_KEY`, `SAM_API_KEY`, `REGULATIONS_GOV_API_KEY`, `COMPANIES_HOUSE_API_KEY`, `METACULUS_TOKEN`, `BLUESKY_IDENTIFIER` / `BLUESKY_APP_PASSWORD`, `PODCAST_INDEX_KEY` / `PODCAST_INDEX_SECRET`, `FRED_API_KEY`, `SEMANTIC_SCHOLAR_API_KEY`.
 
 ## Will discuss: Signal Studio and playgrounds
 **Signal Studio** is the recommended first playground: a visual content lab that turns High Signal findings into polished marketing assets. It should feel like a futuristic marketing command center, not a boring dashboard. It can be playground-quality visually while still producing assets useful for selling High Signal.

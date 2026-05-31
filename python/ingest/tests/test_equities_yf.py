@@ -7,7 +7,6 @@ import math
 import pandas as pd
 import pytest
 
-from high_signal_ingest.sources.equities.snapshot import Close
 from high_signal_ingest.sources.equities.yf import (
     _dataframe_to_closes,
     ticker_to_yfinance_symbol,

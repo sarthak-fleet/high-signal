@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import pandas as pd
-import pytest
 
 from high_signal_ingest.sources.equities.wikipedia_constituents import (
     WikipediaIndexSpec,

@@ -16,6 +16,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import logging
+import re
 from datetime import datetime, timedelta, timezone
 from typing import Iterator
 
@@ -28,6 +29,34 @@ from ..types import Event
 USER_AGENT = "high-signal/0.1 gov-ingest"
 LOGGER = logging.getLogger(__name__)
 DEFAULT_CONCURRENCY = 8
+RELEVANT_TERMS = (
+    "ai",
+    "artificial intelligence",
+    "advanced computing",
+    "antitrust",
+    "autonomous",
+    "broadband",
+    "chip",
+    "chips",
+    "cloud",
+    "cybersecurity",
+    "data center",
+    "datacenter",
+    "digital",
+    "drone",
+    "export control",
+    "foreign investment",
+    "ftc",
+    "gpu",
+    "immigration",
+    "machine learning",
+    "merger",
+    "model",
+    "privacy",
+    "semiconductor",
+    "spectrum",
+    "startup",
+)
 
 # Federal Register API filtered to BIS export-control rules
 _BIS_FR = (
@@ -39,6 +68,30 @@ _COMMERCE_FR = (
     "https://www.federalregister.gov/api/v1/documents.rss"
     "?conditions[agencies][]=commerce-department&per_page=20"
 )
+_FTC_FR = (
+    "https://www.federalregister.gov/api/v1/documents.rss"
+    "?conditions[agencies][]=federal-trade-commission&per_page=20"
+)
+_SEC_FR = (
+    "https://www.federalregister.gov/api/v1/documents.rss"
+    "?conditions[agencies][]=securities-and-exchange-commission&per_page=20"
+)
+_FCC_FR = (
+    "https://www.federalregister.gov/api/v1/documents.rss"
+    "?conditions[agencies][]=federal-communications-commission&per_page=20"
+)
+_DHS_FR = (
+    "https://www.federalregister.gov/api/v1/documents.rss"
+    "?conditions[agencies][]=homeland-security-department&per_page=20"
+)
+_FAA_FR = (
+    "https://www.federalregister.gov/api/v1/documents.rss"
+    "?conditions[agencies][]=federal-aviation-administration&per_page=20"
+)
+_FDA_FR = (
+    "https://www.federalregister.gov/api/v1/documents.rss"
+    "?conditions[agencies][]=food-and-drug-administration&per_page=20"
+)
 
 
 # (id, name, rss_url, default_entity_id)
@@ -46,6 +99,12 @@ DEFAULT_FEEDS: list[tuple[str, str, str, str | None]] = [
     # US
     ("us_bis", "US BIS export controls", _BIS_FR, None),
     ("us_commerce", "US Commerce announcements", _COMMERCE_FR, None),
+    ("us_ftc", "US FTC rulemaking", _FTC_FR, None),
+    ("us_sec", "US SEC rulemaking", _SEC_FR, None),
+    ("us_fcc", "US FCC rulemaking", _FCC_FR, None),
+    ("us_dhs", "US DHS / USCIS rulemaking", _DHS_FR, None),
+    ("us_faa", "US FAA rulemaking", _FAA_FR, None),
+    ("us_fda", "US FDA rulemaking", _FDA_FR, None),
     (
         "ferc_news",
         "FERC news",
@@ -107,6 +166,17 @@ def _hash(*parts: str) -> str:
     return hashlib.sha256("␟".join(parts).encode("utf-8")).hexdigest()
 
 
+def _is_relevant(title: str, body: str) -> bool:
+    text = f"{title} {body}".lower()
+    for term in RELEVANT_TERMS:
+        if len(term) <= 3:
+            if re.search(rf"\b{re.escape(term)}\b", text):
+                return True
+        elif term in text:
+            return True
+    return False
+
+
 async def _fetch_text(client: httpx.AsyncClient, url: str) -> str:
     try:
         r = await client.get(url)
@@ -146,6 +216,8 @@ async def fetch_feed_async(
         except Exception:
             continue
         if pub < since:
+            continue
+        if not _is_relevant(title, body):
             continue
         raw_hash = _hash("gov", fid, link)
         out.append(

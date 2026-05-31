@@ -14,7 +14,39 @@ from . import audit
 from .extract.entities import primary_entity
 from .graph import spillover_ids
 from .seed import load_entities
-from .sources import cisa_kev, edgar, gdelt, github, gov, hkex, ir, lobsters, markets, news, reddit, techmeme, youtube
+from .sources import (
+    bluesky,
+    cisa_kev,
+    companies_house,
+    edgar,
+    gdelt,
+    github,
+    github_archive,
+    gov,
+    gov_contracts,
+    guardian,
+    huggingface,
+    hkex,
+    ir,
+    jobs,
+    lobsters,
+    macro_rates,
+    markets,
+    metaculus,
+    news,
+    nvd,
+    package_registries,
+    patents,
+    podcast_index,
+    reddit,
+    regulations,
+    sec_xbrl,
+    semantic_scholar,
+    substack,
+    techmeme,
+    wikidata,
+    youtube,
+)
 from .types import Event
 from .generator import fallback_candidate, generate
 from .writer import emit
@@ -25,14 +57,32 @@ Source = Literal[
     "reddit",
     "ir",
     "github",
+    "github-archive",
     "youtube",
+    "bluesky",
     "gov",
     "gdelt",
     "hkex",
     "markets",
     "cisa-kev",
     "lobsters",
+    "substack",
     "techmeme",
+    "packages",
+    "jobs",
+    "huggingface",
+    "nvd",
+    "guardian",
+    "patents",
+    "gov-contracts",
+    "wikidata",
+    "semantic-scholar",
+    "regulations",
+    "companies-house",
+    "metaculus",
+    "podcast-index",
+    "macro-rates",
+    "sec-xbrl",
     "all",
 ]
 
@@ -53,9 +103,11 @@ def fetch(source: Source, days: int) -> list[Event]:
     if source in {"edgar", "all"}:
         tickers = [e.ticker for e in load_entities() if e.ticker and e.type == "public"]
         ticker_limit = _int_env("EDGAR_TICKER_LIMIT", DEFAULT_DAILY_EDGAR_TICKER_LIMIT)
-        # 8-K is event-driven; 10-Q/K only checked weekly to keep volume bounded
-        forms = ("8-K", "10-Q", "10-K") if days >= 7 else ("8-K",)
-        out.extend(edgar.fetch_recent(tickers[:ticker_limit], days=days, forms=forms))
+        # Daily stays 8-K only; wider runs add capital/ownership forms and Form D search.
+        if days >= 7:
+            out.extend(edgar.fetch_expanded(tickers[:ticker_limit], days=days))
+        else:
+            out.extend(edgar.fetch_recent(tickers[:ticker_limit], days=days, forms=("8-K",)))
     if source in {"news", "all"}:
         out.extend(news.fetch_all(days=days, tier_max=2, fetch_body=True))
     if source in {"reddit", "all"}:
@@ -64,10 +116,16 @@ def fetch(source: Source, days: int) -> list[Event]:
         out.extend(ir.fetch_all())
     if source in {"github", "all"}:
         out.extend(github.fetch_all(days=max(days, 7)))
+    if source in {"github-archive", "all"}:
+        out.extend(github_archive.fetch_all(days=days))
     if source in {"gov", "all"}:
         out.extend(gov.fetch_all(days=max(days, 3)))
+    if source in {"huggingface", "all"}:
+        out.extend(huggingface.fetch_all(days=max(days, 7)))
     if source in {"youtube", "all"}:
         out.extend(youtube.fetch_all(days=max(days, 7)))
+    if source in {"bluesky", "all"}:
+        out.extend(bluesky.fetch_all(days=max(days, 7)))
     if source in {"gdelt", "all"}:
         # Smaller default for daily; backfill driver pulls bigger windows
         out.extend(gdelt.fetch_all(days=max(days, 1), max_records_per_query=100))
@@ -88,8 +146,38 @@ def fetch(source: Source, days: int) -> list[Event]:
         out.extend(cisa_kev.fetch_all(days=max(days, 7)))
     if source in {"lobsters", "all"}:
         out.extend(lobsters.fetch_all(days=max(days, 3)))
+    if source in {"substack", "all"}:
+        out.extend(substack.fetch_all(days=max(days, 7)))
     if source in {"techmeme", "all"}:
         out.extend(techmeme.fetch_all(days=max(days, 3)))
+    if source in {"packages", "all"}:
+        out.extend(package_registries.fetch_all(days=max(days, 7)))
+    if source in {"jobs", "all"}:
+        out.extend(jobs.fetch_all(days=max(days, 14)))
+    if source in {"nvd", "all"}:
+        out.extend(nvd.fetch_all(days=max(days, 14)))
+    if source in {"guardian", "all"}:
+        out.extend(guardian.fetch_all(days=max(days, 7)))
+    if source in {"patents", "all"}:
+        out.extend(patents.fetch_all(days=max(days, 365)))
+    if source in {"gov-contracts", "all"}:
+        out.extend(gov_contracts.fetch_all(days=max(days, 30)))
+    if source == "wikidata":
+        out.extend(wikidata.fetch_all(days=days))
+    if source in {"semantic-scholar", "all"}:
+        out.extend(semantic_scholar.fetch_all(days=max(days, 30)))
+    if source in {"regulations", "all"}:
+        out.extend(regulations.fetch_all(days=max(days, 30)))
+    if source == "companies-house":
+        out.extend(companies_house.fetch_all(days=days))
+    if source in {"metaculus", "all"}:
+        out.extend(metaculus.fetch_all(days=max(days, 30)))
+    if source in {"podcast-index", "all"}:
+        out.extend(podcast_index.fetch_all(days=max(days, 14)))
+    if source in {"macro-rates", "all"}:
+        out.extend(macro_rates.fetch_all(days=max(days, 30)))
+    if source in {"sec-xbrl", "all"}:
+        out.extend(sec_xbrl.fetch_all(days=max(days, 120)))
     return out
 
 
@@ -244,13 +332,32 @@ def main() -> None:
             "reddit",
             "ir",
             "github",
+            "github-archive",
             "youtube",
+            "bluesky",
             "gov",
             "gdelt",
             "hkex",
             "markets",
             "cisa-kev",
             "lobsters",
+            "substack",
+            "techmeme",
+            "packages",
+            "jobs",
+            "huggingface",
+            "nvd",
+            "guardian",
+            "patents",
+            "gov-contracts",
+            "wikidata",
+            "semantic-scholar",
+            "regulations",
+            "companies-house",
+            "metaculus",
+            "podcast-index",
+            "macro-rates",
+            "sec-xbrl",
             "all",
         ],
         default="all",

@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-import math
 from datetime import date, timedelta
 
 import pytest
 
 from high_signal_ingest.sources.equities.snapshot import (
     Close,
-    Tier1Snapshot,
     beta,
     compute_tier1,
     max_drawdown,
