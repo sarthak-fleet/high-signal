@@ -279,6 +279,7 @@ export LAB_API_URL=http://localhost:8765 && pnpm dev
 - Example signal: `signals/2026-04-25/example-nvda-h100-lead-time.md`
 - Ingest runbook: `docs/ingest-runbook.md`
 - Source coverage / launch scope: `docs/source-coverage.md`
+- Data ownership boundary: `docs/data-service-boundary.md`
 - Seeding guide: `docs/seeding.md`
 
 ## Deploy

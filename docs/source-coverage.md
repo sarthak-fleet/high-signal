@@ -11,6 +11,10 @@ signals for an active collection. The rule is:
 - Publish selectively.
 - Label weak evidence as `low` confidence instead of hiding it.
 
+Long-term data ownership is defined in `docs/data-service-boundary.md`: High
+Signal owns insight generation and publication policy; a data substrate should
+eventually own raw payloads, source-specific schemas, dedupe, and backfills.
+
 Every generated insight should answer:
 
 - What changed?
