@@ -16,7 +16,7 @@ type Env = Record<string, never>;
 const SPARQL_ENDPOINT = "https://query.wikidata.org/sparql";
 const USER_AGENT =
   "high-signal-enrich/0.1 " +
-  "(+https://github.com/sarthakagrawal927/high-signal; " +
+  "(+https://github.com/sarthak-fleet/high-signal; " +
   "contact: sarthak@vaultwealth.com)";
 
 interface Binding<T = string> {
