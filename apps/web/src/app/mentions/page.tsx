@@ -110,7 +110,6 @@ export default async function MentionsPage({
     activeConfig && promptsResult?.status === "fulfilled" ? promptsResult.value.prompts : [];
   const checksForConfig =
     activeConfig && checksResult?.status === "fulfilled" ? checksResult.value.checks : [];
-  const recentChecks = dashboard?.mentions.recentChecks ?? [];
 
   const previewBrand = (params.previewBrand ?? activeConfig?.brandName ?? "High Signal").trim();
   const previewText = (params.previewText ?? SAMPLE_TEXT).trim();
@@ -137,11 +136,11 @@ export default async function MentionsPage({
           { label: "prompts", value: promptsForConfig.length.toString(), sub: "active config" },
           {
             label: "latest mention rate",
-            value: recentChecks[0]?.brandMentionRate != null
-              ? `${Math.round((recentChecks[0]?.brandMentionRate ?? 0) * 100)}%`
+            value: checksForConfig[0]?.brandMentionRate != null
+              ? `${Math.round((checksForConfig[0]?.brandMentionRate ?? 0) * 100)}%`
               : "—",
-            sub: recentChecks[0]
-              ? `check ${recentChecks[0].createdAt.slice(0, 10)}`
+            sub: checksForConfig[0]
+              ? `check ${checksForConfig[0].createdAt.slice(0, 10)}`
               : "no checks yet",
           },
         ]}
@@ -344,7 +343,7 @@ export default async function MentionsPage({
       <FeedList
         eyebrow="check history"
         empty="No checks across configs yet."
-        items={recentChecks.map((check) => ({
+        items={checksForConfig.map((check) => ({
           href: `/mentions?config=${encodeURIComponent(check.configId)}`,
           kicker: `${check.createdAt.slice(0, 16).replace("T", " ")} / ${check.status}`,
           title:
