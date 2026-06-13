@@ -42,6 +42,15 @@ export function SiteFooter() {
   const year = new Date().getFullYear();
   return (
     <footer className="mt-16 border-t border-[var(--color-line)]">
+      <div className="mx-auto max-w-5xl px-6 pt-10 pb-0">
+        <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--color-muted)]">
+          Every signal cites ≥ 2 sources. Hit-rate tracked from day one.
+          <span className="mx-3 opacity-30">—</span>
+          <a href="/track-record" className="hover:text-[var(--color-fg)]">
+            See the ledger →
+          </a>
+        </p>
+      </div>
       <div className="mx-auto max-w-5xl px-6 py-10">
         <div className="grid grid-cols-2 gap-8 sm:grid-cols-4">
           <FooterColumn title="Product" links={PRODUCT} />

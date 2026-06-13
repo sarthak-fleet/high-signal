@@ -58,9 +58,10 @@ export default async function HomePage({
     <PageShell>
       <HomeJsonLd />
       <HeroHeader eyebrow={heroEyebrow} title="What changed today">
-        High Signal aggregates technology, startup, and finance sources, curates them, and
-        synthesizes the day into five sections. Pick any product and any region to see how the
-        brief recomposes. Every claim cites at least two sources.
+        One daily brief from 20+ noisy public sources — SEC filings, Reddit, Hacker News, YouTube
+        transcripts, GitHub, prediction markets, government feeds, and more. Five sections: stocks
+        watching for a boom, business ideas, new lifestyle trends, how the market sees your brand,
+        and ideas to improve it. Every claim cites at least two independent sources.
         {selectedProduct ? null : spotlightName ? (
           <>
             {" "}
